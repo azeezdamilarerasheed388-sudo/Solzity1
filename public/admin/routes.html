@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">API Routes</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <button onclick="loadRoutes()" class="bg-blue-600 text-white px-4 py-2 rounded">Load Routes</button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Registered Routes:</h2>
+            <pre id="routes" class="bg-gray-100 p-4 rounded overflow-auto max-h-96"></pre>
+        </div>
+    </div>
+
+    <script>
+        async function loadRoutes() {
+            const routesEl = document.getElementById('routes');
+            routesEl.textContent = 'Loading...';
+            
+            try {
+                const res = await fetch('/api/routes');
+                const data = await res.json();
+                
+                if (data.success) {
+                    let output = '';
+                    data.routes.forEach(route => {
+                        output += `${route.methods.padEnd(8)} ${route.path}\n`;
+                    });
+                    routesEl.textContent = output;
+                } else {
+                    routesEl.textContent = 'Error loading routes';
+                }
+            } catch (error) {
+                routesEl.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

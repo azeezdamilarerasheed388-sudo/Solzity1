@@ -1,0 +1,237 @@
+const { db } = require('../config/database-supabase');
+
+class TransferService {
+    // Get transfer fees from admin_settings
+    async getTransferFees() {
+        console.log('📊 TransferService: Fetching fees from database');
+        // FIXED: Use id = 1 (integer), not id = true (boolean)
+        const settings = await db.getAsync(
+            'SELECT transfer_fee_sol, transfer_fee_usdc, transfer_fee_usdt FROM admin_settings WHERE id = 1'
+        );
+        console.log('📊 Database settings:', settings);
+        
+        const fees = {
+            SOL: settings?.transfer_fee_sol !== undefined ? settings.transfer_fee_sol : 0.001,
+            USDC: settings?.transfer_fee_usdc !== undefined ? settings.transfer_fee_usdc : 0.5,
+            USDT: settings?.transfer_fee_usdt !== undefined ? settings.transfer_fee_usdt : 0.5
+        };
+        console.log('📊 Returned fees:', fees);
+        return fees;
+    }
+
+    // Update transfer fees (admin only)
+    async updateTransferFees(fees, adminId) {
+        const now = Math.floor(Date.now() / 1000);
+        await db.runAsync(
+            `UPDATE admin_settings 
+             SET transfer_fee_sol = ?, transfer_fee_usdc = ?, transfer_fee_usdt = ?,
+                 updated_at = ?, updated_by = ?
+             WHERE id = 1`,
+            [fees.SOL, fees.USDC, fees.USDT, now, adminId]
+        );
+        return { success: true, fees };
+    }
+
+    // Find user by username or email
+    async findUserByUsername(username) {
+        // Remove @ if present
+        const searchUsername = username.replace('@', '').trim();
+        
+        const user = await db.getAsync(
+            'SELECT id, username, email FROM users WHERE username = ? OR email = ?',
+            [searchUsername, searchUsername]
+        );
+        
+        if (!user) {
+            throw new Error('User not found');
+        }
+        
+        return user;
+    }
+
+    // Get user balance
+    async getUserBalance(userId) {
+        const wallet = await db.getAsync(
+            'SELECT sol_balance, usdc_balance, usdt_balance FROM wallets WHERE user_id = ?',
+            [userId]
+        );
+        
+        if (!wallet) {
+            return { sol: 0, usdc: 0, usdt: 0 };
+        }
+        
+        return {
+            sol: wallet.sol_balance || 0,
+            usdc: wallet.usdc_balance || 0,
+            usdt: wallet.usdt_balance || 0
+        };
+    }
+
+    // Make a transfer
+    async transfer(senderId, recipientUsername, token, amount, memo = '') {
+        const now = Math.floor(Date.now() / 1000);
+        
+        // Start transaction
+        const client = await db;
+        
+        try {
+            await client.runAsync('BEGIN TRANSACTION');
+
+            // Find recipient
+            const recipient = await this.findUserByUsername(recipientUsername);
+            
+            if (senderId === recipient.id) {
+                throw new Error('Cannot transfer to yourself');
+            }
+
+            // Get sender's current balances
+            const senderWallet = await client.getAsync(
+                'SELECT sol_balance, usdc_balance, usdt_balance FROM wallets WHERE user_id = ?',
+                [senderId]
+            );
+
+            if (!senderWallet) {
+                throw new Error('Sender wallet not found');
+            }
+
+            // Get transfer fees
+            const fees = await this.getTransferFees();
+            const fee = fees[token] || 0;
+            const totalDeduction = amount + fee;
+
+            // Check balance based on token
+            let currentBalance = 0;
+            if (token === 'SOL') {
+                currentBalance = senderWallet.sol_balance || 0;
+            } else if (token === 'USDC') {
+                currentBalance = senderWallet.usdc_balance || 0;
+            } else if (token === 'USDT') {
+                currentBalance = senderWallet.usdt_balance || 0;
+            } else {
+                throw new Error('Invalid token. Must be SOL, USDC, or USDT');
+            }
+
+            if (currentBalance < totalDeduction) {
+                throw new Error(`Insufficient ${token} balance. Need ${totalDeduction} (${amount} + ${fee} fee)`);
+            }
+
+            // Update sender balance (deduct amount + fee)
+            if (token === 'SOL') {
+                await client.runAsync(
+                    'UPDATE wallets SET sol_balance = sol_balance - ? WHERE user_id = ?',
+                    [totalDeduction, senderId]
+                );
+            } else if (token === 'USDC') {
+                await client.runAsync(
+                    'UPDATE wallets SET usdc_balance = usdc_balance - ? WHERE user_id = ?',
+                    [totalDeduction, senderId]
+                );
+            } else if (token === 'USDT') {
+                await client.runAsync(
+                    'UPDATE wallets SET usdt_balance = usdt_balance - ? WHERE user_id = ?',
+                    [totalDeduction, senderId]
+                );
+            }
+
+            // Update recipient balance (add amount)
+            if (token === 'SOL') {
+                // Check if recipient has wallet
+                const recipientWallet = await client.getAsync(
+                    'SELECT id FROM wallets WHERE user_id = ?',
+                    [recipient.id]
+                );
+
+                if (!recipientWallet) {
+                    throw new Error('Recipient wallet not found');
+                }
+
+                await client.runAsync(
+                    'UPDATE wallets SET sol_balance = sol_balance + ? WHERE user_id = ?',
+                    [amount, recipient.id]
+                );
+            } else if (token === 'USDC') {
+                await client.runAsync(
+                    'UPDATE wallets SET usdc_balance = usdc_balance + ? WHERE user_id = ?',
+                    [amount, recipient.id]
+                );
+            } else if (token === 'USDT') {
+                await client.runAsync(
+                    'UPDATE wallets SET usdt_balance = usdt_balance + ? WHERE user_id = ?',
+                    [amount, recipient.id]
+                );
+            }
+
+            // Record the transfer
+            const result = await client.runAsync(
+                `INSERT INTO transfers (
+                    sender_id, recipient_id, recipient_username, token, 
+                    amount, fee, net_amount, memo, created_at, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed') RETURNING id`,
+                [senderId, recipient.id, recipient.username || recipient.email, 
+                 token, amount, fee, amount, memo || '', now]
+            );
+
+            await client.runAsync('COMMIT');
+
+            return {
+                transferId: result.lastID,
+                recipient: {
+                    id: recipient.id,
+                    username: recipient.username || recipient.email
+                },
+                token,
+                amount,
+                fee,
+                totalDeducted: amount + fee,
+                memo,
+                status: 'completed'
+            };
+
+        } catch (error) {
+            await client.runAsync('ROLLBACK');
+            console.error('Transfer failed:', error);
+            throw error;
+        }
+    }
+
+    // Get user's transfer history
+    async getUserTransfers(userId, limit = 50) {
+        const transfers = await db.allAsync(
+            `SELECT t.*, 
+                    sender.username as sender_username,
+                    recipient.username as recipient_username
+             FROM transfers t
+             LEFT JOIN users sender ON t.sender_id = sender.id
+             LEFT JOIN users recipient ON t.recipient_id = recipient.id
+             WHERE t.sender_id = ? OR t.recipient_id = ?
+             ORDER BY t.created_at DESC
+             LIMIT ?`,
+            [userId, userId, limit]
+        );
+
+        // Add direction flag
+        return transfers.map(t => ({
+            ...t,
+            direction: t.sender_id === userId ? 'sent' : 'received'
+        }));
+    }
+
+    // Get all transfers (admin only)
+    async getAllTransfers(limit = 100) {
+        return await db.allAsync(
+            `SELECT t.*, 
+                    sender.username as sender_username,
+                    sender.email as sender_email,
+                    recipient.username as recipient_username,
+                    recipient.email as recipient_email
+             FROM transfers t
+             LEFT JOIN users sender ON t.sender_id = sender.id
+             LEFT JOIN users recipient ON t.recipient_id = recipient.id
+             ORDER BY t.created_at DESC
+             LIMIT ?`,
+            [limit]
+        );
+    }
+}
+
+module.exports = new TransferService();

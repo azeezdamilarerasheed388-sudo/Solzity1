@@ -1,0 +1,57 @@
+const { db } = require('../config/database-supabase');
+const crypto = require('crypto');
+const emailService = require('./emailService');
+
+class VerificationService {
+    generateVerificationCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    async createVerification(userId, email) {
+        const code = this.generateVerificationCode();
+        const expiresAt = Math.floor(Date.now() / 1000) + 600; // 10 minutes
+        
+        await db.runAsync(
+            `INSERT INTO email_verifications (user_id, email, code, expires_at, created_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [userId, email, code, expiresAt, Math.floor(Date.now() / 1000)]
+        );
+        
+        return code;
+    }
+
+    async verifyCode(userId, code) {
+        const verification = await db.getAsync(
+            `SELECT * FROM email_verifications 
+             WHERE user_id = ? AND code = ? AND expires_at > ? AND verified = false
+             ORDER BY created_at DESC LIMIT 1`,
+            [userId, code, Math.floor(Date.now() / 1000)]
+        );
+        
+        if (!verification) {
+            return false;
+        }
+        
+        await db.runAsync(
+            `UPDATE email_verifications SET verified = true, verified_at = ? WHERE id = ?`,
+            [Math.floor(Date.now() / 1000), verification.id]
+        );
+        
+        await db.runAsync(
+            `UPDATE users SET email_verified = true WHERE id = ?`,
+            [userId]
+        );
+        
+        return true;
+    }
+
+    async isVerified(userId) {
+        const user = await db.getAsync(
+            'SELECT email_verified FROM users WHERE id = ?',
+            [userId]
+        );
+        return user?.email_verified === true;
+    }
+}
+
+module.exports = new VerificationService();

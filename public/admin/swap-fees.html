@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-600">💰 Swap Fee Admin Panel</h1>
+            <div class="space-x-2">
+                <a href="/admin" class="bg-gray-200 px-4 py-2 rounded-xl text-sm">Admin Home</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-xl text-sm">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 max-w-7xl mx-auto">
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-2xl p-5 shadow-sm">
+                <p class="text-gray-500 text-sm">Total Fees Collected</p>
+                <p class="text-3xl font-bold text-blue-600" id="totalFees">$0</p>
+            </div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm">
+                <p class="text-gray-500 text-sm">Today's Fees</p>
+                <p class="text-3xl font-bold text-green-600" id="todayFees">$0</p>
+            </div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm">
+                <p class="text-gray-500 text-sm">Users Charged</p>
+                <p class="text-3xl font-bold text-purple-600" id="usersCharged">0</p>
+            </div>
+            <div class="bg-white rounded-2xl p-5 shadow-sm">
+                <p class="text-gray-500 text-sm">Positions Closed</p>
+                <p class="text-3xl font-bold text-orange-600" id="positionsClosed">0</p>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm mb-6">
+            <h2 class="text-xl font-bold mb-4">⚙️ Swap Fee Controls</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Fee Amount -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Fee Amount ($)</label>
+                    <input type="number" id="feeAmount" value="5" step="0.5" min="0" class="w-full p-3 border rounded-xl">
+                    <p class="text-xs text-gray-500 mt-1">Current: $5 per day</p>
+                </div>
+
+                <!-- Schedule Time -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Schedule Time (Nigeria Time)</label>
+                    <input type="time" id="feeTime" value="16:00" class="w-full p-3 border rounded-xl">
+                    <p class="text-xs text-gray-500 mt-1">Runs daily at 4:00 PM Nigeria time</p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-end gap-2">
+                    <button onclick="updateSettings()" class="bg-blue-600 text-white px-4 py-3 rounded-xl flex-1">
+                        Update Settings
+                    </button>
+                    <button onclick="triggerNow()" class="bg-green-600 text-white px-4 py-3 rounded-xl">
+                        Run Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Fee Collection -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm mb-6">
+            <h2 class="text-xl font-bold mb-4">📅 Today's Fee Collection</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="p-3 text-left">User ID</th>
+                            <th class="p-3 text-left">Username</th>
+                            <th class="p-3 text-left">Amount</th>
+                            <th class="p-3 text-left">Status</th>
+                            <th class="p-3 text-left">Positions Closed</th>
+                            <th class="p-3 text-left">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="todayFeesList">
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-400">Loading today's data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Fee History -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 class="text-xl font-bold mb-4">📊 Fee History</h2>
+            
+            <!-- Filters -->
+            <div class="flex gap-4 mb-4 flex-wrap">
+                <select id="dateFilter" class="p-2 border rounded-lg" onchange="loadHistory()">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="all">All time</option>
+                </select>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="p-3 text-left">Date</th>
+                            <th class="p-3 text-left">User</th>
+                            <th class="p-3 text-left">Amount</th>
+                            <th class="p-3 text-left">Status</th>
+                            <th class="p-3 text-left">Positions Closed</th>
+                            <th class="p-3 text-left">Balance Before</th>
+                        </tr>
+                    </thead>
+                    <tbody id="feeHistoryList">
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-400">Loading history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        // No manual admin check - let the middleware handle it
+        // The API will return 403 if not admin
+
+        // Load ALL data from database
+        async function loadAdminData() {
+            try {
+                // Get summary stats
+                const summaryRes = await fetch('/api/admin/swap-fees/summary', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (summaryRes.status === 403) {
+                    // Not admin - redirect
+                    alert('Admin access required');
+                    window.location.href = '/dashboard';
+                    return;
+                }
+                
+                const summaryData = await summaryRes.json();
+                
+                if (summaryData.success) {
+                    document.getElementById('totalFees').textContent = '$' + (summaryData.data.total || 0).toFixed(2);
+                    document.getElementById('todayFees').textContent = '$' + (summaryData.data.today || 0).toFixed(2);
+                    document.getElementById('usersCharged').textContent = summaryData.data.usersCharged || 0;
+                    document.getElementById('positionsClosed').textContent = summaryData.data.positionsClosed || 0;
+                }
+
+                // Get today's fees
+                const todayRes = await fetch('/api/admin/swap-fees/today', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const todayData = await todayRes.json();
+                
+                if (todayData.success) {
+                    renderTodayFees(todayData.data);
+                }
+
+                // Load history
+                loadHistory();
+
+            } catch (error) {
+                console.error('Error loading admin data:', error);
+            }
+        }
+
+        // Render today's fees
+        function renderTodayFees(fees) {
+            const tbody = document.getElementById('todayFeesList');
+            
+            if (!fees || fees.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-gray-400">
+                            No fees collected today
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            fees.forEach(fee => {
+                const status = fee.positions_closed > 0 ? 'Positions Closed' : 'Paid';
+                const statusClass = fee.positions_closed > 0 ? 'text-orange-600' : 'text-green-600';
+                
+                html += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">${fee.user_id}</td>
+                        <td class="p-3">${fee.username || 'N/A'}</td>
+                        <td class="p-3 font-bold">$${parseFloat(fee.amount).toFixed(2)}</td>
+                        <td class="p-3">
+                            <span class="${statusClass}">${status}</span>
+                        </td>
+                        <td class="p-3">${fee.positions_closed || 0}</td>
+                        <td class="p-3">${new Date(fee.created_at * 1000).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        // Load history with filters
+        async function loadHistory() {
+            const days = document.getElementById('dateFilter').value;
+            
+            try {
+                const res = await fetch(`/api/admin/swap-fees/history?days=${days}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderHistory(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        // Render history table
+        function renderHistory(fees) {
+            const tbody = document.getElementById('feeHistoryList');
+            
+            if (!fees || fees.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-gray-400">No fee history found</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            fees.forEach(fee => {
+                const status = fee.positions_closed > 0 ? 'Positions Closed' : 'Paid';
+                const statusClass = fee.positions_closed > 0 ? 'text-orange-600' : 'text-green-600';
+                
+                html += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">${new Date(fee.created_at * 1000).toLocaleDateString()}</td>
+                        <td class="p-3">${fee.username || fee.user_id}</td>
+                        <td class="p-3 font-bold">$${parseFloat(fee.amount).toFixed(2)}</td>
+                        <td class="p-3">
+                            <span class="${statusClass}">${status}</span>
+                        </td>
+                        <td class="p-3">${fee.positions_closed || 0}</td>
+                        <td class="p-3">$${fee.balance_before ? fee.balance_before.toFixed(2) : '0.00'}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        // Update settings
+        async function updateSettings() {
+            const amount = document.getElementById('feeAmount').value;
+            const time = document.getElementById('feeTime').value;
+            
+            try {
+                const res = await fetch('/api/admin/swap-fees/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ amount, time })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Settings updated successfully');
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to update settings');
+            }
+        }
+
+        // Trigger fee collection now
+        async function triggerNow() {
+            if (!confirm('Run swap fee collection now? This will charge all users with open positions.')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/admin/swap-fees/trigger', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Fee collection triggered successfully!`);
+                    loadAdminData(); // Refresh data
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to trigger fee collection');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+
+        // Initialize
+        loadAdminData();
+        setInterval(loadAdminData, 30000);
+    </script>
+</body>
+</html>

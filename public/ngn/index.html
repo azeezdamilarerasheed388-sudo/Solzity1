@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-600">NGN Wallet</h1>
+            <div class="space-x-2">
+                <a href="/dashboard" class="bg-gray-200 px-4 py-2 rounded-xl text-sm">Dashboard</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-xl text-sm">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 pb-20">
+        <!-- Balance Card -->
+        <div class="bg-gradient-to-r from-green-500 to-blue-500 rounded-2xl p-5 text-white shadow-lg mb-4">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-lg opacity-90">NGN Balance</span>
+                <span class="text-2xl">₦</span>
+            </div>
+            <p class="text-4xl font-bold mb-1" id="ngnBalance">0.00</p>
+        </div>
+
+        <!-- Rate Card -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-gray-600">Real Rate</span>
+                <span class="text-xl font-bold text-blue-600" id="realRate">₦1,500</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <div class="bg-green-50 p-2 rounded text-center">
+                    <span class="text-xs text-green-600">Buy USDC/USDT</span>
+                    <p class="font-bold" id="buyRate">₦1,420</p>
+                    <p class="text-xs text-gray-500">(real - 80)</p>
+                </div>
+                <div class="bg-blue-50 p-2 rounded text-center">
+                    <span class="text-xs text-blue-600">Sell USDC/USDT</span>
+                    <p class="font-bold" id="sellRate">₦1,500</p>
+                    <p class="text-xs text-gray-500">(real rate)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex space-x-2 mb-4 overflow-x-auto pb-1">
+            <button onclick="showTab('deposit')" class="tab-btn px-4 py-2 bg-blue-600 text-white rounded-xl whitespace-nowrap" data-tab="deposit">
+                💰 Deposit NGN
+            </button>
+            <button onclick="showTab('withdraw')" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="withdraw">
+                💸 Withdraw NGN
+            </button>
+            <button onclick="showTab('buy')" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="buy">
+                🔄 Buy USDC/USDT
+            </button>
+            <button onclick="showTab('sell')" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="sell">
+                💱 Sell to NGN
+            </button>
+            <button onclick="showTab('history')" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="history">
+                📜 History
+            </button>
+        </div>
+
+        <!-- Deposit Tab -->
+        <div id="depositTab" class="tab-content">
+            <div class="bg-white rounded-2xl shadow-sm p-5">
+                <h2 class="text-xl font-bold mb-4">Deposit NGN</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Amount (NGN)</label>
+                    <input type="number" id="depositAmount" class="w-full p-3 border rounded-xl" placeholder="1000" min="100">
+                </div>
+
+                <button onclick="initiateDeposit()" class="w-full bg-green-600 text-white py-3 rounded-xl font-semibold">
+                    Deposit NGN
+                </button>
+                <p class="text-xs text-gray-500 mt-3 text-center">Minimum ₦100 • Paystack</p>
+            </div>
+        </div>
+
+        <!-- Withdraw Tab -->
+        <div id="withdrawTab" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-5">
+                <h2 class="text-xl font-bold mb-4">Withdraw to Bank</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Amount (NGN)</label>
+                    <input type="number" id="withdrawAmount" class="w-full p-3 border rounded-xl" placeholder="1000" min="1000" oninput="clearVerification()">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Select Bank</label>
+                    <select id="bankSelect" class="w-full p-3 border rounded-xl" onchange="clearVerification()">
+                        <option value="">Loading banks...</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Account Number</label>
+                    <input type="text" id="accountNumber" class="w-full p-3 border rounded-xl" placeholder="0123456789" maxlength="10" oninput="clearVerification()" onblur="verifyAccount()">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Account Name</label>
+                    <input type="text" id="accountName" class="w-full p-3 border rounded-xl bg-gray-50" readonly placeholder="Will appear after verification">
+                    <p id="verificationStatus" class="text-xs mt-1 hidden"></p>
+                </div>
+
+                <button onclick="initiateWithdrawal()" id="withdrawBtn" disabled class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold opacity-50 cursor-not-allowed">
+                    Withdraw to Bank
+                </button>
+                <p class="text-xs text-gray-500 mt-3 text-center">Minimum ₦1,000</p>
+            </div>
+        </div>
+
+        <!-- Buy Crypto Tab -->
+        <div id="buyTab" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-5">
+                <h2 class="text-xl font-bold mb-4">Buy Crypto with NGN</h2>
+                <p class="text-sm text-gray-600 mb-4">Rate: <span id="buyRateDisplay">₦1,420</span> per USDC/USDT (real rate - 80)</p>
+                
+                <div class="mb-6 p-4 border rounded-xl">
+                    <h3 class="font-semibold mb-3">Buy USDC</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="buyUsdcAmount" class="flex-1 p-2 border rounded" placeholder="NGN amount" oninput="updateBuyUsdc()">
+                        <button onclick="buyUsdc()" class="bg-blue-600 text-white px-4 py-2 rounded">Buy</button>
+                    </div>
+                    <p class="text-sm text-gray-600">You'll get: <span id="buyUsdcResult">0 USDC</span></p>
+                </div>
+
+                <div class="mb-6 p-4 border rounded-xl">
+                    <h3 class="font-semibold mb-3">Buy USDT</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="buyUsdtAmount" class="flex-1 p-2 border rounded" placeholder="NGN amount" oninput="updateBuyUsdt()">
+                        <button onclick="buyUsdt()" class="bg-blue-600 text-white px-4 py-2 rounded">Buy</button>
+                    </div>
+                    <p class="text-sm text-gray-600">You'll get: <span id="buyUsdtResult">0 USDT</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sell Crypto Tab -->
+        <div id="sellTab" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-5">
+                <h2 class="text-xl font-bold mb-4">Sell Crypto for NGN</h2>
+                <p class="text-sm text-gray-600 mb-4">Rate: <span id="sellRateDisplay">₦1,500</span> per USDC/USDT (real rate)</p>
+                
+                <div class="mb-6 p-4 border rounded-xl">
+                    <h3 class="font-semibold mb-3">Sell USDC</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="sellUsdcAmount" class="flex-1 p-2 border rounded" placeholder="USDC amount" oninput="updateSellUsdc()">
+                        <button onclick="sellUsdc()" class="bg-blue-600 text-white px-4 py-2 rounded">Sell</button>
+                    </div>
+                    <p class="text-sm text-gray-600">You'll get: <span id="sellUsdcResult">0 NGN</span></p>
+                </div>
+
+                <div class="mb-6 p-4 border rounded-xl">
+                    <h3 class="font-semibold mb-3">Sell USDT</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="sellUsdtAmount" class="flex-1 p-2 border rounded" placeholder="USDT amount" oninput="updateSellUsdt()">
+                        <button onclick="sellUsdt()" class="bg-blue-600 text-white px-4 py-2 rounded">Sell</button>
+                    </div>
+                    <p class="text-sm text-gray-600">You'll get: <span id="sellUsdtResult">0 NGN</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-5">
+                <h2 class="text-xl font-bold mb-4">Transaction History</h2>
+                <div id="historyList" class="space-y-3">
+                    <div class="text-center text-gray-500 py-4">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let realRate = 1500;
+        let buyRate = 1420;
+        let sellRate = 1500;
+        let spread = 80;
+        let verificationInProgress = false;
+
+        // Test account numbers that always work
+        const testAccounts = [
+            '8138005300',
+            '0123456789',
+            '1234567890',
+            '1234567891',
+            '1234567892'
+        ];
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tab + 'Tab').classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-200');
+            });
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('bg-blue-600', 'text-white');
+
+            if (tab === 'withdraw') loadBanks();
+            if (tab === 'history') loadHistory();
+        }
+
+        async function loadBalance() {
+            try {
+                const res = await fetch('/api/ngn/balance', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('ngnBalance').textContent = data.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+            } catch (error) {
+                console.error('Error loading balance:', error);
+            }
+        }
+
+        async function loadRate() {
+            try {
+                const res = await fetch('/api/ngn/rate');
+                const data = await res.json();
+                
+                if (data.success) {
+                    realRate = data.real;
+                    buyRate = data.buy;
+                    sellRate = data.sell;
+                    spread = data.spread;
+                    
+                    document.getElementById('realRate').textContent = '₦' + realRate.toLocaleString();
+                    document.getElementById('buyRate').textContent = '₦' + buyRate.toLocaleString();
+                    document.getElementById('sellRate').textContent = '₦' + sellRate.toLocaleString();
+                    document.getElementById('buyRateDisplay').textContent = '₦' + buyRate.toLocaleString();
+                    document.getElementById('sellRateDisplay').textContent = '₦' + sellRate.toLocaleString();
+                    
+                    loadBalance();
+                }
+            } catch (error) {
+                console.error('Error loading rate:', error);
+            }
+        }
+
+        function clearVerification() {
+            document.getElementById('accountName').value = '';
+            document.getElementById('verificationStatus').classList.add('hidden');
+            document.getElementById('withdrawBtn').disabled = true;
+            document.getElementById('withdrawBtn').classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        async function verifyAccount() {
+            const accountNumber = document.getElementById('accountNumber').value;
+            const bankCode = document.getElementById('bankSelect').value;
+            const statusEl = document.getElementById('verificationStatus');
+            
+            if (accountNumber.length !== 10 || !bankCode || verificationInProgress) {
+                return;
+            }
+
+            verificationInProgress = true;
+            statusEl.classList.remove('hidden', 'text-green-600', 'text-red-600');
+            statusEl.classList.add('text-yellow-600');
+            statusEl.textContent = 'Verifying account...';
+
+            try {
+                const res = await fetch('/api/ngn/verify-account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ accountNumber, bankCode })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('accountName').value = data.accountName;
+                    statusEl.classList.remove('text-yellow-600');
+                    statusEl.classList.add('text-green-600');
+                    statusEl.textContent = '✓ Account verified successfully';
+                    document.getElementById('withdrawBtn').disabled = false;
+                    document.getElementById('withdrawBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    document.getElementById('accountName').value = '';
+                    statusEl.classList.remove('text-yellow-600');
+                    statusEl.classList.add('text-red-600');
+                    statusEl.textContent = '✗ ' + (data.error || 'Verification failed. Try 8138005300');
+                }
+            } catch (error) {
+                console.error('Error verifying account:', error);
+                statusEl.classList.remove('text-yellow-600');
+                statusEl.classList.add('text-red-600');
+                statusEl.textContent = '✗ Verification failed';
+            } finally {
+                verificationInProgress = false;
+            }
+        }
+
+        async function loadBanks() {
+            try {
+                const res = await fetch('/api/ngn/banks');
+                const data = await res.json();
+                
+                if (data.success) {
+                    let options = '<option value="">Select your bank</option>';
+                    data.data.forEach(bank => {
+                        options += `<option value="${bank.code}">${bank.name}</option>`;
+                    });
+                    document.getElementById('bankSelect').innerHTML = options;
+                }
+            } catch (error) {
+                console.error('Error loading banks:', error);
+            }
+        }
+
+        async function initiateDeposit() {
+            const ngnAmount = parseFloat(document.getElementById('depositAmount').value);
+            
+            if (!ngnAmount || ngnAmount < 100) {
+                alert('Please enter a valid amount (minimum ₦100)');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/ngn/deposit/initialize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ngnAmount })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    window.location.href = data.authorization_url;
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to initialize deposit');
+            }
+        }
+
+        async function initiateWithdrawal() {
+            const ngnAmount = parseFloat(document.getElementById('withdrawAmount').value);
+            const bankCode = document.getElementById('bankSelect').value;
+            const accountNumber = document.getElementById('accountNumber').value;
+            const accountName = document.getElementById('accountName').value;
+
+            if (!ngnAmount || ngnAmount < 1000) {
+                alert('Please enter a valid amount (minimum ₦1,000)');
+                return;
+            }
+
+            if (!bankCode || !accountNumber || !accountName) {
+                alert('Please verify your account first');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/ngn/withdraw/initiate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ngnAmount, bankCode, accountNumber, accountName })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ Withdrawal initiated! Reference: ${data.reference}`);
+                    loadBalance();
+                    showTab('history');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Withdrawal failed');
+            }
+        }
+
+        // Buy/Sell functions
+        function updateBuyUsdc() {
+            const ngn = parseFloat(document.getElementById('buyUsdcAmount').value) || 0;
+            const usdc = ngn / buyRate;
+            document.getElementById('buyUsdcResult').textContent = usdc.toFixed(2) + ' USDC';
+        }
+
+        async function buyUsdc() {
+            const ngnAmount = parseFloat(document.getElementById('buyUsdcAmount').value);
+            if (!ngnAmount || ngnAmount < 100) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            try {
+                const res = await fetch('/api/ngn/buy/usdc', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ngnAmount })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Bought ${data.toAmount.toFixed(2)} USDC`);
+                    loadBalance();
+                    document.getElementById('buyUsdcAmount').value = '';
+                    document.getElementById('buyUsdcResult').textContent = '0 USDC';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Transaction failed');
+            }
+        }
+
+        function updateBuyUsdt() {
+            const ngn = parseFloat(document.getElementById('buyUsdtAmount').value) || 0;
+            const usdt = ngn / buyRate;
+            document.getElementById('buyUsdtResult').textContent = usdt.toFixed(2) + ' USDT';
+        }
+
+        async function buyUsdt() {
+            const ngnAmount = parseFloat(document.getElementById('buyUsdtAmount').value);
+            if (!ngnAmount || ngnAmount < 100) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            try {
+                const res = await fetch('/api/ngn/buy/usdt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ngnAmount })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Bought ${data.toAmount.toFixed(2)} USDT`);
+                    loadBalance();
+                    document.getElementById('buyUsdtAmount').value = '';
+                    document.getElementById('buyUsdtResult').textContent = '0 USDT';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Transaction failed');
+            }
+        }
+
+        function updateSellUsdc() {
+            const usdc = parseFloat(document.getElementById('sellUsdcAmount').value) || 0;
+            const ngn = usdc * sellRate;
+            document.getElementById('sellUsdcResult').textContent = '₦' + ngn.toLocaleString();
+        }
+
+        async function sellUsdc() {
+            const usdcAmount = parseFloat(document.getElementById('sellUsdcAmount').value);
+            if (!usdcAmount || usdcAmount < 1) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            try {
+                const res = await fetch('/api/ngn/sell/usdc', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ usdcAmount })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Sold for ₦${data.toAmount.toLocaleString()}`);
+                    loadBalance();
+                    document.getElementById('sellUsdcAmount').value = '';
+                    document.getElementById('sellUsdcResult').textContent = '0 NGN';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Transaction failed');
+            }
+        }
+
+        function updateSellUsdt() {
+            const usdt = parseFloat(document.getElementById('sellUsdtAmount').value) || 0;
+            const ngn = usdt * sellRate;
+            document.getElementById('sellUsdtResult').textContent = '₦' + ngn.toLocaleString();
+        }
+
+        async function sellUsdt() {
+            const usdtAmount = parseFloat(document.getElementById('sellUsdtAmount').value);
+            if (!usdtAmount || usdtAmount < 1) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            try {
+                const res = await fetch('/api/ngn/sell/usdt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ usdtAmount })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Sold for ₦${data.toAmount.toLocaleString()}`);
+                    loadBalance();
+                    document.getElementById('sellUsdtAmount').value = '';
+                    document.getElementById('sellUsdtResult').textContent = '0 NGN';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Transaction failed');
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const convRes = await fetch('/api/ngn/conversions', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const convData = await convRes.json();
+
+                const depositRes = await fetch('/api/ngn/deposits', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const depositData = await depositRes.json();
+
+                const withdrawRes = await fetch('/api/ngn/withdrawals', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const withdrawData = await withdrawRes.json();
+
+                const container = document.getElementById('historyList');
+                let html = '';
+
+                if (convData.success && convData.data) {
+                    convData.data.forEach(t => {
+                        const date = new Date(t.created_at * 1000).toLocaleDateString();
+                        html += `
+                            <div class="bg-purple-50 p-3 rounded-xl">
+                                <div class="flex justify-between">
+                                    <div>
+                                        <span class="font-medium">${t.type === 'buy_usdc' ? 'Bought USDC' : t.type === 'buy_usdt' ? 'Bought USDT' : t.type === 'sell_usdc' ? 'Sold USDC' : 'Sold USDT'}</span>
+                                        <p class="text-xs text-gray-500">${date}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="font-bold">${t.from_amount} ${t.from_currency} → ${t.to_amount.toFixed(2)} ${t.to_currency}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (depositData.success && depositData.data) {
+                    depositData.data.forEach(t => {
+                        const date = new Date(t.created_at * 1000).toLocaleDateString();
+                        html += `
+                            <div class="bg-green-50 p-3 rounded-xl">
+                                <div class="flex justify-between">
+                                    <div>
+                                        <span class="font-medium">Deposit</span>
+                                        <p class="text-xs text-gray-500">${date}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="font-bold">+₦${t.ngn_amount.toLocaleString()}</span>
+                                        <p class="text-xs text-green-600">${t.status}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (withdrawData.success && withdrawData.data) {
+                    withdrawData.data.forEach(t => {
+                        const date = new Date(t.created_at * 1000).toLocaleDateString();
+                        html += `
+                            <div class="bg-yellow-50 p-3 rounded-xl">
+                                <div class="flex justify-between">
+                                    <div>
+                                        <span class="font-medium">Withdrawal</span>
+                                        <p class="text-xs text-gray-500">${date}</p>
+                                        <p class="text-xs">${t.bank_name}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="font-bold">-₦${t.ngn_amount.toLocaleString()}</span>
+                                        <p class="text-xs text-yellow-600">${t.status}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (html === '') {
+                    container.innerHTML = '<div class="text-center text-gray-500 py-4">No transactions yet</div>';
+                } else {
+                    container.innerHTML = html;
+                }
+
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+
+        // Initialize
+        loadRate();
+        setInterval(loadRate, 60000);
+        setInterval(loadBalance, 30000);
+    </script>
+</body>
+</html>

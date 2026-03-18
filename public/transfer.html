@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex items-center">
+            <a href="/dashboard" class="text-2xl mr-4">←</a>
+            <h1 class="text-xl font-bold text-blue-600">Send Money</h1>
+        </div>
+    </div>
+
+    <div class="p-4 pb-20">
+        <!-- Balance Cards -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="bg-blue-50 p-3 rounded-lg text-center border-2 border-blue-200">
+                <span class="text-sm text-blue-600 font-medium">SOL</span>
+                <p class="text-2xl font-bold text-blue-700" id="balanceSol">0.00</p>
+            </div>
+            <div class="bg-green-50 p-3 rounded-lg text-center border-2 border-green-200">
+                <span class="text-sm text-green-600 font-medium">USDC</span>
+                <p class="text-2xl font-bold text-green-700" id="balanceUsdc">0.00</p>
+            </div>
+            <div class="bg-purple-50 p-3 rounded-lg text-center border-2 border-purple-200">
+                <span class="text-sm text-purple-600 font-medium">USDT</span>
+                <p class="text-2xl font-bold text-purple-700" id="balanceUsdt">0.00</p>
+            </div>
+        </div>
+
+        <!-- Transfer Form -->
+        <div class="bg-white rounded-2xl shadow-sm p-5 mb-4">
+            <h2 class="font-semibold text-lg mb-4">New Transfer</h2>
+            
+            <form id="transferForm" onsubmit="event.preventDefault(); submitTransfer();">
+                <!-- Recipient -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Recipient (Username or Email)</label>
+                    <div class="flex">
+                        <input type="text" id="recipient" class="flex-1 p-3 border rounded-l-xl" 
+                               placeholder="@username or email" required>
+                        <button type="button" onclick="searchUser()" 
+                                class="bg-blue-600 text-white px-4 rounded-r-xl hover:bg-blue-700">
+                            Check
+                        </button>
+                    </div>
+                    <div id="recipientInfo" class="mt-2 text-sm hidden"></div>
+                </div>
+
+                <!-- Token -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Token</label>
+                    <select id="token" class="w-full p-3 border rounded-xl" onchange="updateSelection()">
+                        <option value="SOL">SOL (Fee: 0.001 SOL)</option>
+                        <option value="USDC">USDC (Fee: $0.50)</option>
+                        <option value="USDT">USDT (Fee: $0.50)</option>
+                    </select>
+                </div>
+
+                <!-- Amount -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Amount to Send</label>
+                    <input type="number" id="amount" step="0.01" min="0" class="w-full p-3 border rounded-xl"
+                           oninput="calculate()" required>
+                </div>
+
+                <!-- Fee Info -->
+                <div id="feeInfo" class="bg-blue-50 p-4 rounded-xl mb-4">
+                    <p class="text-sm text-blue-800">
+                        Transfer fee: <span id="feeAmount">0.001</span> <span id="feeToken">SOL</span>
+                    </p>
+                    <p class="text-sm text-blue-800 font-semibold">
+                        Total deducted: <span id="totalDeduction">0.0000</span> <span id="totalToken">SOL</span>
+                    </p>
+                    <p class="text-sm text-blue-800">
+                        Recipient receives: <span id="netAmount">0.0000</span> <span id="netToken">SOL</span>
+                    </p>
+                </div>
+
+                <!-- Memo (Optional) -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Memo (Optional)</label>
+                    <input type="text" id="memo" class="w-full p-3 border rounded-xl" 
+                           placeholder="What's this for?">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" disabled
+                        class="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold text-lg opacity-50">
+                    Select recipient first
+                </button>
+            </form>
+        </div>
+
+        <!-- Recent Transfers -->
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h2 class="font-semibold text-lg mb-4">Recent Transfers</h2>
+            <div id="transfersList" class="space-y-3">
+                <div class="text-center text-gray-500 py-4">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let selectedRecipient = null;
+        let balances = { sol: 0, usdc: 0, usdt: 0 };
+        let fees = { SOL: 0.001, USDC: 0.5, USDT: 0.5 };
+
+        // Load user balance
+        async function loadBalance() {
+            try {
+                const res = await fetch('/api/balance', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!res.ok) {
+                    throw new Error('Failed to fetch balance');
+                }
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    balances = data.balances;
+                    console.log('Balances loaded:', balances);
+                    
+                    // Update balance cards
+                    document.getElementById('balanceSol').textContent = balances.sol.toFixed(2);
+                    document.getElementById('balanceUsdc').textContent = balances.usdc.toFixed(2);
+                    document.getElementById('balanceUsdt').textContent = balances.usdt.toFixed(2);
+                    
+                    updateSelection();
+                }
+            } catch (error) {
+                console.error('Error loading balance:', error);
+            }
+        }
+
+        // Load transfer fees on page load
+        async function loadFees() {
+            try {
+                const res = await fetch('/api/transfers/fees');
+                const data = await res.json();
+                if (data.success) {
+                    fees = data.fees;
+                    updateFeeDisplay();
+                }
+            } catch (error) {
+                console.error('Error loading fees:', error);
+            }
+        }
+
+        function updateFeeDisplay() {
+            const selectedToken = document.getElementById('token').value;
+            const fee = fees[selectedToken] || 0;
+            
+            // Update select option text
+            const select = document.getElementById('token');
+            select.options[0].text = `SOL (Fee: ${fees.SOL} SOL)`;
+            select.options[1].text = `USDC (Fee: $${fees.USDC})`;
+            select.options[2].text = `USDT (Fee: $${fees.USDT})`;
+            
+            document.getElementById('feeAmount').textContent = fee.toFixed(4);
+            document.getElementById('feeToken').textContent = selectedToken;
+            calculate();
+        }
+
+        // Update when token changes
+        function updateSelection() {
+            updateFeeDisplay();
+            calculate();
+        }
+
+        // Calculate fee and net amount
+        function calculate() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const selectedToken = document.getElementById('token').value;
+            const fee = fees[selectedToken] || 0;
+            
+            let currentBalance = 0;
+            if (selectedToken === 'SOL') currentBalance = balances.sol;
+            else if (selectedToken === 'USDC') currentBalance = balances.usdc;
+            else if (selectedToken === 'USDT') currentBalance = balances.usdt;
+            
+            const totalDeduction = amount + fee;
+            
+            document.getElementById('totalDeduction').textContent = totalDeduction.toFixed(4);
+            document.getElementById('netAmount').textContent = amount.toFixed(4);
+            document.getElementById('totalToken').textContent = selectedToken;
+            document.getElementById('netToken').textContent = selectedToken;
+            
+            // Validate amount
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (!selectedRecipient) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = 'Select recipient first';
+            } else if (amount <= 0) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = 'Enter amount to send';
+            } else if (totalDeduction > currentBalance) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = `Need ${totalDeduction.toFixed(4)} ${selectedToken} (you have ${currentBalance.toFixed(4)})`;
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50');
+                submitBtn.textContent = `Send ${amount} ${selectedToken}`;
+            }
+        }
+
+        // Search for user by username/email
+        async function searchUser() {
+            const recipient = document.getElementById('recipient').value;
+            
+            if (!recipient) {
+                alert('Please enter a username or email');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/transfers/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ username: recipient })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    selectedRecipient = data.user;
+                    document.getElementById('recipientInfo').innerHTML = `
+                        <div class="bg-green-100 text-green-700 p-2 rounded-lg">
+                            ✅ Sending to: ${data.user.username}
+                        </div>
+                    `;
+                    document.getElementById('recipientInfo').classList.remove('hidden');
+                    calculate();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                selectedRecipient = null;
+                document.getElementById('recipientInfo').innerHTML = `
+                    <div class="bg-red-100 text-red-700 p-2 rounded-lg">
+                        ❌ User not found
+                    </div>
+                `;
+                document.getElementById('recipientInfo').classList.remove('hidden');
+                calculate();
+            }
+        }
+
+        // Submit transfer
+        async function submitTransfer() {
+            if (!selectedRecipient) {
+                alert('Please verify recipient first');
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('amount').value);
+            const selectedToken = document.getElementById('token').value;
+            const fee = fees[selectedToken] || 0;
+            const memo = document.getElementById('memo').value;
+            const recipient = document.getElementById('recipient').value;
+
+            let currentBalance = 0;
+            if (selectedToken === 'SOL') currentBalance = balances.sol;
+            else if (selectedToken === 'USDC') currentBalance = balances.usdc;
+            else if (selectedToken === 'USDT') currentBalance = balances.usdt;
+
+            if (amount + fee > currentBalance) {
+                alert('Insufficient balance');
+                return;
+            }
+
+            // Log what we're sending
+            console.log('Sending transfer:', {
+                recipient: recipient,
+                token: selectedToken,
+                amount: amount,
+                memo: memo
+            });
+
+            try {
+                const res = await fetch('/api/transfers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        recipient: recipient,
+                        token: selectedToken,
+                        amount: amount,
+                        memo: memo
+                    })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ ${data.message}\nFee: ${data.transfer.fee} ${selectedToken}\nTotal deducted: ${data.transfer.totalDeducted} ${selectedToken}`);
+                    document.getElementById('transferForm').reset();
+                    selectedRecipient = null;
+                    document.getElementById('recipientInfo').classList.add('hidden');
+                    loadBalance(); // Reload balance after transfer
+                    loadTransfers();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Transfer failed: ' + error.message);
+            }
+        }
+
+        // Load transfer history
+        async function loadTransfers() {
+            try {
+                const res = await fetch('/api/transfers/history', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const container = document.getElementById('transfersList');
+                
+                if (!data.transfers || data.transfers.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500 py-4">No transfers yet</div>';
+                    return;
+                }
+
+                let html = '';
+                data.transfers.slice(0, 10).forEach(t => {
+                    const date = new Date(t.created_at * 1000).toLocaleDateString();
+                    const colors = {
+                        'SOL': 'blue',
+                        'USDC': 'green',
+                        'USDT': 'purple'
+                    }[t.token];
+
+                    const isSent = t.direction === 'sent';
+                    const sign = isSent ? '-' : '+';
+                    const textColor = isSent ? 'text-red-600' : 'text-green-600';
+
+                    html += `
+                        <div class="bg-gray-50 rounded-xl p-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="bg-${colors}-100 text-${colors}-600 px-2 py-1 rounded-lg text-xs">
+                                        ${t.token}
+                                    </span>
+                                    <p class="text-xs text-gray-500 mt-1">${date}</p>
+                                    <p class="text-sm font-medium mt-1">
+                                        ${isSent ? 'To: ' + t.recipient_username : 'From: ' + t.sender_username}
+                                    </p>
+                                    ${t.memo ? `<p class="text-xs text-gray-500">${t.memo}</p>` : ''}
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold ${textColor}">${sign}${t.amount}</p>
+                                    ${t.fee > 0 ? `<p class="text-xs text-gray-500">Fee: ${t.fee}</p>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading transfers:', error);
+            }
+        }
+
+        // Initialize
+        Promise.all([loadBalance(), loadFees()]).then(() => {
+            updateSelection();
+        });
+        loadTransfers();
+        
+        // Refresh balance every 30 seconds
+        setInterval(loadBalance, 30000);
+    </script>
+</body>
+</html>

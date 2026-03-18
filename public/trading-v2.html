@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav a {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .nav a.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 5px 15px;
+            background: #f0f0f0;
+            border-radius: 40px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Main Grid */
+        .trading-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        /* Chart Section */
+        .chart-section {
+            background: #1A1C22;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .asset-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .asset-tab {
+            padding: 10px 20px;
+            background: #2A2C33;
+            border: none;
+            color: #8E8E93;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .asset-tab.active {
+            background: #F0B90B;
+            color: black;
+        }
+
+        #tradingview_chart {
+            height: 400px;
+            width: 100%;
+            background: #2A2C33;
+            border-radius: 8px;
+        }
+
+        /* Trading Panel */
+        .trading-panel {
+            background: #1A1C22;
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+        }
+
+        .balance-card {
+            background: #2A2C33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .balance-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .balance-row .label {
+            color: #8E8E93;
+        }
+
+        .balance-row .value {
+            color: white;
+            font-weight: bold;
+        }
+
+        .transfer-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .transfer-btn {
+            flex: 1;
+            padding: 12px;
+            background: #F0B90B;
+            color: black;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .transfer-btn.secondary {
+            background: #4A4F63;
+            color: white;
+        }
+
+        /* EXACT SCREENSHOT DESIGN - Prices on buttons only */
+        .price-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #2A2C33;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .sell-btn {
+            flex: 1;
+            padding: 15px;
+            background: #EA3943;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: all 0.2s;
+        }
+
+        .sell-btn:hover {
+            background: #c41e28;
+            transform: translateY(-2px);
+        }
+
+        .spread {
+            color: #F0B90B;
+            font-weight: bold;
+            font-size: 18px;
+            margin: 0 15px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .buy-btn {
+            flex: 1;
+            padding: 15px;
+            background: #16C784;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.2s;
+        }
+
+        .buy-btn:hover {
+            background: #0f9d5e;
+            transform: translateY(-2px);
+        }
+
+        /* Volume */
+        .volume-section {
+            margin-bottom: 15px;
+        }
+
+        .volume-label {
+            color: #8E8E93;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .volume-buttons {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .volume-btn {
+            padding: 10px 5px;
+            background: #2A2C33;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .volume-btn.active {
+            background: #F0B90B;
+            color: black;
+        }
+
+        /* Order Summary */
+        .order-summary {
+            background: #2A2C33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #8E8E93;
+            font-size: 14px;
+        }
+
+        .summary-row .value {
+            color: white;
+            font-weight: bold;
+        }
+
+        .summary-row.total {
+            border-top: 1px solid #40444F;
+            padding-top: 8px;
+            margin-top: 8px;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Positions */
+        .positions-section {
+            background: #1A1C22;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .positions-section h2 {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .positions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .position-card {
+            background: #2A2C33;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .position-card.profit {
+            border-left-color: #16C784;
+        }
+
+        .position-card.loss {
+            border-left-color: #EA3943;
+        }
+
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .position-asset {
+            font-weight: bold;
+            color: white;
+        }
+
+        .position-side {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .position-side.BUY {
+            background: #16C784;
+            color: white;
+        }
+
+        .position-side.SELL {
+            background: #EA3943;
+            color: white;
+        }
+
+        .position-details {
+            color: #8E8E93;
+            font-size: 13px;
+        }
+
+        .position-details div {
+            margin-bottom: 5px;
+        }
+
+        .position-pnl {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .position-pnl.profit {
+            color: #16C784;
+        }
+
+        .position-pnl.loss {
+            color: #EA3943;
+        }
+
+        .close-btn {
+            width: 100%;
+            padding: 8px;
+            background: #F0B90B;
+            color: black;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1A1C22;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 100%;
+            color: white;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            background: #2A2C33;
+            border: 1px solid #40444F;
+            border-radius: 6px;
+            color: white;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .confirm {
+            background: #F0B90B;
+            color: black;
+        }
+
+        .cancel {
+            background: #40444F;
+            color: white;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1001;
+            animation: slideIn 0.3s;
+        }
+
+        .notification.success {
+            background: #16C784;
+        }
+
+        .notification.error {
+            background: #EA3943;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .trading-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .price-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .sell-btn, .buy-btn {
+                margin: 0;
+                width: 100%;
+            }
+            
+            .spread {
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <a href="/" class="logo">
+                <span>◎</span>
+                <span>SolanaX</span>
+            </a>
+            
+            <nav class="nav">
+                <a href="/">Dashboard</a>
+                <a href="/trading-v2" class="active">Trading V2</a>
+                <a href="/admin">Admin</a>
+            </nav>
+            
+            <div class="user-menu" onclick="toggleUserMenu()">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span id="userName">Loading...</span>
+            </div>
+        </header>
+
+        <div class="trading-grid">
+            <!-- Chart Section -->
+            <div class="chart-section">
+                <div class="asset-tabs" id="assetTabs">
+                    <button class="asset-tab" onclick="switchAsset('BTC/USDT')">BTC</button>
+                    <button class="asset-tab" onclick="switchAsset('ETH/USDT')">ETH</button>
+                    <button class="asset-tab" onclick="switchAsset('ETC/USDT')">ETC</button>
+                    <button class="asset-tab active" onclick="switchAsset('SOL/USDT')">SOL</button>
+                </div>
+                <div id="tradingview_chart"></div>
+            </div>
+
+            <!-- Trading Panel -->
+            <div class="trading-panel">
+                <h2 style="margin-bottom: 15px;">Trade</h2>
+                
+                <div class="balance-card">
+                    <div class="balance-row">
+                        <span class="label">Trading Balance:</span>
+                        <span class="value" id="tradingBalance">$0.00</span>
+                    </div>
+                    <div class="balance-row">
+                        <span class="label">Main USDT:</span>
+                        <span class="value" id="mainUSDT">$0.00</span>
+                    </div>
+                    <div class="transfer-buttons">
+                        <button class="transfer-btn" onclick="showTransferModal('toTrading')">↓ To Trading</button>
+                        <button class="transfer-btn secondary" onclick="showTransferModal('toMain')">↑ To Main</button>
+                    </div>
+                </div>
+
+                <!-- EXACT SCREENSHOT DESIGN - Prices ONLY on buttons -->
+                <div class="price-row">
+                    <button class="sell-btn" id="sellBtn" onclick="placeOrder('SELL')">
+                        Sell $0.00
+                    </button>
+                    <span class="spread" id="spread">0.00</span>
+                    <button class="buy-btn" id="buyBtn" onclick="placeOrder('BUY')">
+                        Buy $0.00
+                    </button>
+                </div>
+
+                <!-- Volume -->
+                <div class="volume-section">
+                    <div class="volume-label">Volume</div>
+                    <div class="volume-buttons">
+                        <button class="volume-btn active" onclick="setVolume(0.01)">0.01</button>
+                        <button class="volume-btn" onclick="setVolume(0.05)">0.05</button>
+                        <button class="volume-btn" onclick="setVolume(0.1)">0.1</button>
+                        <button class="volume-btn" onclick="setVolume(0.5)">0.5</button>
+                        <button class="volume-btn" onclick="setVolume(1)">1</button>
+                        <button class="volume-btn" onclick="setVolume(2)">2</button>
+                        <button class="volume-btn" onclick="setVolume(5)">5</button>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <div class="summary-row">
+                        <span>Margin (1:100)</span>
+                        <span class="value" id="margin">$0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Fee ($15/vol)</span>
+                        <span class="value" id="fee">$0.00</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Total Required</span>
+                        <span class="value" id="total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Positions Section -->
+        <div class="positions-section">
+            <h2>Your Open Positions</h2>
+            <div id="positionsList" class="positions-grid">
+                <div style="color: #8E8E93; text-align: center; padding: 40px;">No open positions</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Modal -->
+    <div class="modal" id="transferModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Transfer to Trading</h3>
+            <p style="color: #8E8E93;">Amount in USDT</p>
+            <input type="number" id="transferAmount" placeholder="Enter amount" step="0.01" min="1">
+            <p>Available: <span id="modalAvailable">$0.00</span></p>
+            <div class="modal-actions">
+                <button class="confirm" onclick="confirmTransfer()">Confirm</button>
+                <button class="cancel" onclick="closeTransferModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TradingView -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
+
+    <!-- Main Script -->
+    <script src="/js/trading-v2/trading.js"></script>
+</body>
+</html>

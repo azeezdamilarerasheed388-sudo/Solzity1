@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Withdraw - CEX Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex items-center">
+            <a href="/dashboard" class="text-2xl mr-4">←</a>
+            <h1 class="text-xl font-bold text-blue-600">Withdraw Funds</h1>
+        </div>
+    </div>
+
+    <div class="p-4 pb-20">
+        <!-- Balance Cards -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="bg-blue-50 p-3 rounded-lg text-center border-2 border-blue-200">
+                <span class="text-sm text-blue-600 font-medium">SOL</span>
+                <p class="text-2xl font-bold text-blue-700" id="balanceSol">0.00</p>
+            </div>
+            <div class="bg-green-50 p-3 rounded-lg text-center border-2 border-green-200">
+                <span class="text-sm text-green-600 font-medium">USDC</span>
+                <p class="text-2xl font-bold text-green-700" id="balanceUsdc">0.00</p>
+            </div>
+            <div class="bg-purple-50 p-3 rounded-lg text-center border-2 border-purple-200">
+                <span class="text-sm text-purple-600 font-medium">USDT</span>
+                <p class="text-2xl font-bold text-purple-700" id="balanceUsdt">0.00</p>
+            </div>
+        </div>
+
+        <!-- Token Selection -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-3">Select Token</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="selectToken('SOL')" class="token-btn p-3 border-2 rounded-xl text-center" data-token="SOL">
+                    <span class="block text-2xl text-blue-600">◎</span>
+                    <span class="font-medium">SOL</span>
+                </button>
+                <button onclick="selectToken('USDC')" class="token-btn p-3 border-2 rounded-xl text-center" data-token="USDC">
+                    <span class="block text-2xl text-green-600">$</span>
+                    <span class="font-medium">USDC</span>
+                </button>
+                <button onclick="selectToken('USDT')" class="token-btn p-3 border-2 rounded-xl text-center" data-token="USDT">
+                    <span class="block text-2xl text-purple-600">₮</span>
+                    <span class="font-medium">USDT</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Withdrawal Form -->
+        <div id="withdrawalForm" class="bg-white rounded-2xl shadow-sm p-4" style="display: none;">
+            <form id="withdrawForm" onsubmit="submitWithdrawal(event)">
+                <input type="hidden" id="token" name="token">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Recipient Address</label>
+                    <input type="text" id="address" name="address" required 
+                           class="w-full px-4 py-3 border rounded-xl font-mono text-sm"
+                           placeholder="Solana address starting with...">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                    <input type="number" id="amount" name="amount" required step="0.01" min="0"
+                           class="w-full px-4 py-3 border rounded-xl"
+                           oninput="calculateNet()">
+                </div>
+
+                <!-- Fee Info -->
+                <div class="bg-blue-50 p-4 rounded-xl mb-4">
+                    <p class="text-sm text-blue-800">
+                        Withdrawal Fee: <span id="feeDisplay">Loading...</span> <span id="feeToken">USDC</span>
+                    </p>
+                    <p class="text-sm text-blue-800 font-semibold">
+                        You'll Receive: <span id="netDisplay">0.0000</span> <span id="netToken">USDC</span>
+                    </p>
+                    <p class="text-xs text-blue-600">
+                        Min: <span id="minDisplay">-</span> | Max: <span id="maxDisplay">-</span>
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">2FA Code</label>
+                    <input type="text" id="twofa" name="twofa" required maxlength="6" 
+                           class="w-full px-4 py-3 border rounded-xl text-center text-lg tracking-widest"
+                           placeholder="000000">
+                </div>
+
+                <button type="submit" id="submitBtn" disabled
+                        class="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold text-lg opacity-50">
+                    Select token first
+                </button>
+            </form>
+        </div>
+
+        <!-- Recent Withdrawals -->
+        <div class="mt-6">
+            <h2 class="text-lg font-semibold mb-3">Recent Withdrawals</h2>
+            <div id="recentWithdrawals" class="space-y-2">
+                <div class="text-center text-gray-500 py-4">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let currentToken = 'SOL';
+        let balances = { sol: 0, usdc: 0, usdt: 0 };
+        let fees = {};  // Start empty, will be populated from API
+        let limits = {};
+
+        // Load balances
+        async function loadBalance() {
+            try {
+                const res = await fetch('/api/balance', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    balances = data.balances;
+                    document.getElementById('balanceSol').textContent = balances.sol.toFixed(4);
+                    document.getElementById('balanceUsdc').textContent = balances.usdc.toFixed(2);
+                    document.getElementById('balanceUsdt').textContent = balances.usdt.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error loading balance:', error);
+            }
+        }
+
+        // Load fees from database
+        async function loadFees() {
+            try {
+                const res = await fetch('/api/withdrawals/fees');
+                const data = await res.json();
+                console.log('Fees from database:', data);
+                if (data.success && data.fees) {
+                    fees = data.fees;
+                    console.log('Loaded fees:', fees);
+                } else {
+                    console.error('Failed to load fees');
+                }
+                updateFeeDisplay();
+            } catch (error) {
+                console.error('Error loading fees:', error);
+            }
+        }
+
+        // Load limits
+        async function loadLimits() {
+            try {
+                const res = await fetch('/api/withdrawals/limits');
+                const data = await res.json();
+                if (data.success && data.limits) {
+                    limits = data.limits;
+                }
+                updateFeeDisplay();
+            } catch (error) {
+                console.error('Error loading limits:', error);
+            }
+        }
+
+        function selectToken(token) {
+            currentToken = token;
+            
+            document.querySelectorAll('.token-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+            
+            const selectedBtn = document.querySelector(`[data-token="${token}"]`);
+            if (selectedBtn) {
+                selectedBtn.classList.add('border-blue-500', 'bg-blue-50');
+            }
+            
+            document.getElementById('token').value = token;
+            document.getElementById('withdrawalForm').style.display = 'block';
+            
+            updateFeeDisplay();
+            calculateNet();
+        }
+
+        function updateFeeDisplay() {
+            // Get fee from loaded fees object
+            const fee = fees[currentToken];
+            
+            if (fee !== undefined) {
+                document.getElementById('feeDisplay').textContent = fee.toFixed(4);
+            } else {
+                document.getElementById('feeDisplay').textContent = 'Loading...';
+            }
+            
+            document.getElementById('feeToken').textContent = currentToken;
+            
+            const limit = limits[currentToken];
+            if (limit) {
+                document.getElementById('minDisplay').textContent = limit.min;
+                document.getElementById('maxDisplay').textContent = limit.max;
+            }
+            
+            document.getElementById('netToken').textContent = currentToken;
+        }
+
+        function calculateNet() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const fee = fees[currentToken] || 0;
+            const net = Math.max(0, amount - fee);
+            document.getElementById('netDisplay').textContent = net.toFixed(4);
+            
+            // Check balance and enable/disable submit
+            let currentBalance = 0;
+            if (currentToken === 'SOL') currentBalance = balances.sol;
+            else if (currentToken === 'USDC') currentBalance = balances.usdc;
+            else if (currentToken === 'USDT') currentBalance = balances.usdt;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const limit = limits[currentToken];
+            
+            if (!limit) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = 'Loading...';
+            } else if (amount < limit.min) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = `Minimum ${limit.min} ${currentToken}`;
+            } else if (amount > limit.max) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = `Maximum ${limit.max} ${currentToken}`;
+            } else if (amount + fee > currentBalance) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+                submitBtn.textContent = `Insufficient balance`;
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50');
+                submitBtn.textContent = `Withdraw ${amount} ${currentToken}`;
+            }
+        }
+
+        async function submitWithdrawal(e) {
+            e.preventDefault();
+            
+            const token = document.getElementById('token').value;
+            const address = document.getElementById('address').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const twofa = document.getElementById('twofa').value;
+
+            try {
+                const res = await fetch('/api/withdrawals/request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ token, address, amount, twofa })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(data.withdrawal.message);
+                    document.getElementById('withdrawForm').reset();
+                    loadBalance();
+                    loadRecentWithdrawals();
+                    
+                    // Hide form and reset
+                    document.getElementById('withdrawalForm').style.display = 'none';
+                    document.querySelectorAll('.token-btn').forEach(btn => {
+                        btn.classList.remove('border-blue-500', 'bg-blue-50');
+                    });
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Withdrawal failed');
+            }
+        }
+
+        async function loadRecentWithdrawals() {
+            try {
+                const res = await fetch('/api/withdrawals/my', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const container = document.getElementById('recentWithdrawals');
+                
+                if (!data.withdrawals || data.withdrawals.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-500 py-4">No recent withdrawals</div>';
+                    return;
+                }
+
+                let html = '';
+                data.withdrawals.slice(0, 5).forEach(w => {
+                    const date = new Date(w.created_at * 1000).toLocaleDateString();
+                    const colors = {
+                        'SOL': 'blue',
+                        'USDC': 'green',
+                        'USDT': 'purple'
+                    }[w.token];
+
+                    html += `
+                        <div class="bg-gray-50 rounded-xl p-3">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="bg-${colors}-100 text-${colors}-600 px-2 py-1 rounded-lg text-xs">
+                                        ${w.token}
+                                    </span>
+                                    <p class="text-xs text-gray-500 mt-1">${date}</p>
+                                    <p class="text-sm font-medium mt-1">${w.status}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold">${w.amount}</p>
+                                    <p class="text-xs text-gray-500">Fee: ${w.fee}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading withdrawals:', error);
+            }
+        }
+
+        // Initialize - load fees first
+        Promise.all([loadBalance(), loadFees(), loadLimits()]).then(() => {
+            console.log('All data loaded, fees:', fees);
+            selectToken('SOL');
+            loadRecentWithdrawals();
+        });
+        
+        // Refresh balance every 30 seconds
+        setInterval(loadBalance, 30000);
+    </script>
+</body>
+</html>

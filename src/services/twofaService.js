@@ -1,0 +1,92 @@
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
+const { db } = require('../config/database-supabase');
+
+class TwoFAService {
+    async generateSecret(userId, email) {
+        // Generate a new secret
+        const secret = speakeasy.generateSecret({
+            name: `Solzity (${email})`,
+            issuer: 'Solzity',
+            length: 20
+        });
+
+        console.log(`🔐 Generated 2FA secret for user ${userId}:`, secret.base32.substring(0, 10) + '...');
+
+        // Generate QR code as data URL
+        const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+
+        // Save secret to database - FIXED: twofa_enabled = false (not 0)
+        await db.runAsync(
+            'UPDATE users SET twofa_secret = ?, twofa_enabled = false WHERE id = ?',
+            [secret.base32, userId]
+        );
+
+        return {
+            secret: secret.base32,
+            qrCode
+        };
+    }
+
+    async verifyToken(userId, token) {
+        // Get user's secret
+        const user = await db.getAsync(
+            'SELECT twofa_secret FROM users WHERE id = ?',
+            [userId]
+        );
+
+        if (!user || !user.twofa_secret) {
+            console.log(`❌ No 2FA secret found for user ${userId}`);
+            throw new Error('2FA not setup for this user');
+        }
+
+        console.log(`🔍 Verifying token ${token} for user ${userId} with secret:`, user.twofa_secret.substring(0, 10) + '...');
+
+        // Generate expected token for debugging
+        const expectedToken = speakeasy.totp({
+            secret: user.twofa_secret,
+            encoding: 'base32'
+        });
+        console.log(`📱 Expected token: ${expectedToken}`);
+
+        // Verify the token with window of 2 steps for time drift
+        const verified = speakeasy.totp.verify({
+            secret: user.twofa_secret,
+            encoding: 'base32',
+            token: token,
+            window: 2
+        });
+
+        console.log(`✅ Verification result: ${verified ? 'SUCCESS' : 'FAILED'}`);
+        return verified;
+    }
+
+    async enable2FA(userId) {
+        // FIXED: Use true instead of 1
+        await db.runAsync(
+            'UPDATE users SET twofa_enabled = true WHERE id = ?',
+            [userId]
+        );
+        console.log(`✅ 2FA enabled for user ${userId}`);
+    }
+
+    async disable2FA(userId) {
+        // FIXED: Use false instead of 0, and NULL for secret
+        await db.runAsync(
+            'UPDATE users SET twofa_enabled = false, twofa_secret = NULL WHERE id = ?',
+            [userId]
+        );
+        console.log(`✅ 2FA disabled for user ${userId}`);
+    }
+
+    async isEnabled(userId) {
+        const user = await db.getAsync(
+            'SELECT twofa_enabled FROM users WHERE id = ?',
+            [userId]
+        );
+        // FIXED: Compare with true instead of 1
+        return user?.twofa_enabled === true;
+    }
+}
+
+module.exports = new TwoFAService();

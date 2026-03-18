@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f3f4f6;
+            min-height: 100vh;
+            padding: 8px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Header styles */
+        .new-header {
+            background: white;
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            background: #f3f4f6;
+            border-radius: 40px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #2563eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        /* Dropdown styles */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            left: 0;
+            margin-top: 10px;
+            width: 240px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            padding: 8px 0;
+            border: 1px solid #e5e7eb;
+            z-index: 50;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .dropdown-item:hover {
+            background: #f9fafb;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 8px 0;
+        }
+
+        /* History Card Styles */
+        .history-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 5px solid;
+            transition: transform 0.2s;
+            margin-bottom: 12px;
+        }
+
+        .history-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .history-card.profit {
+            border-left-color: #16C784;
+        }
+
+        .history-card.loss {
+            border-left-color: #EA3943;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .asset-badge {
+            font-weight: bold;
+            font-size: 16px;
+            background: #f3f4f6;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .side-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .side-badge.BUY {
+            background: #16C784;
+            color: white;
+        }
+
+        .side-badge.SELL {
+            background: #EA3943;
+            color: white;
+        }
+
+        .close-reason {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+
+        .close-reason.Stop-Loss {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .close-reason.Take-Profit {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .close-reason.Liquidation {
+            background: #1f2937;
+            color: #fbbf24;
+        }
+
+        .close-reason.Swap-Fee {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .history-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 12px 0;
+            padding: 12px 0;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            color: #6b7280;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .pnl-value {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .pnl-value.positive {
+            color: #16C784;
+        }
+
+        .pnl-value.negative {
+            color: #EA3943;
+        }
+
+        .date-value {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .filter-select {
+            padding: 10px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 40px;
+            font-size: 14px;
+            background: white;
+            min-width: 140px;
+        }
+
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            background: white;
+            border-radius: 16px;
+            padding: 48px 24px;
+            text-align: center;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 40px;
+            padding: 4px;
+        }
+
+        .tab-btn {
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .tab-btn.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .history-details {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .stat-card {
+                padding: 12px;
+            }
+            
+            .stat-value {
+                font-size: 20px;
+            }
+            
+            .tab-buttons {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Dropdown -->
+        <div class="new-header">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="/" class="logo">
+                    <span>◎</span>
+                    <span>Solzity</span>
+                </a>
+                
+                <!-- Dropdown Menu -->
+                <div style="position: relative;" id="dropdownContainer">
+                    <button onclick="toggleDropdown()" style="display: flex; align-items: center; gap: 8px; background: #f3f4f6; padding: 10px 16px; border: none; border-radius: 40px; cursor: pointer; font-size: 15px; font-weight: 500;">
+                        <span>☰</span>
+                        <span>Menu</span>
+                        <span id="dropdownArrow">▼</span>
+                    </button>
+                    
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="/trading-v2" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #eab308;">📊</span>
+                            <span>Trade</span>
+                        </a>
+                        <a href="/competitions" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #f97316;">🏆</span>
+                            <span>Competitions</span>
+                        </a>
+                        <a href="/ngn" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #22c55e;">🇳🇬</span>
+                            <span>NGN Wallet</span>
+                        </a>
+                        <a href="/transfer" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #22c55e;">💸</span>
+                            <span>Send</span>
+                        </a>
+                        <a href="/withdraw" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #ef4444;">🏧</span>
+                            <span>Withdraw</span>
+                        </a>
+                        <a href="/deposits" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #a855f7;">📜</span>
+                            <span>History</span>
+                        </a>
+                        <a href="/trading-v2/dashboard" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #3b82f6;">📈</span>
+                            <span>Stats</span>
+                        </a>
+                        <a href="/trading-v2/history.html" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #8b5cf6;">📋</span>
+                            <span>Trade History</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/2fa-setup" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #6b7280;">🔐</span>
+                            <span>2FA Setup</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-menu" id="userMenu">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span id="userName">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Page Title -->
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">📋 Trade History</h1>
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="loadHistory('closed')">Closed Trades</button>
+                <button class="tab-btn" onclick="loadHistory('all')">All History</button>
+            </div>
+        </div>
+
+        <!-- Stats Summary -->
+        <div class="stat-cards" id="statsContainer">
+            <div class="stat-card">
+                <div class="stat-label">Total Trades</div>
+                <div class="stat-value" id="totalTrades">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value" id="winRate">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Net P&L</div>
+                <div class="stat-value" id="netPnl">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Best Trade</div>
+                <div class="stat-value" id="bestTrade">$0</div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <select class="filter-select" id="assetFilter" onchange="applyFilters()">
+                <option value="all">All Assets</option>
+                <option value="BTC/USDT">BTC/USDT</option>
+                <option value="ETH/USDT">ETH/USDT</option>
+                <option value="ETC/USDT">ETC/USDT</option>
+                <option value="SOL/USDT">SOL/USDT</option>
+            </select>
+
+            <select class="filter-select" id="reasonFilter" onchange="applyFilters()">
+                <option value="all">All Reasons</option>
+                <option value="Closed">Manual Close</option>
+                <option value="Stop Loss">Stop Loss</option>
+                <option value="Take Profit">Take Profit</option>
+                <option value="Liquidation">Liquidation</option>
+                <option value="Swap Fee">Swap Fee</option>
+            </select>
+
+            <select class="filter-select" id="dateFilter" onchange="applyFilters()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">This year</option>
+                <option value="all">All time</option>
+            </select>
+        </div>
+
+        <!-- History List -->
+        <div id="historyList">
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="text-lg font-medium">Loading your trade history...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let allPositions = [];
+        let filteredPositions = [];
+        let currentTab = 'closed';
+
+        // Dropdown functionality
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.toggle('show');
+            arrow.textContent = menu.classList.contains('show') ? '▲' : '▼';
+        }
+
+        function closeDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.remove('show');
+            arrow.textContent = '▼';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('dropdownContainer');
+            const menu = document.getElementById('dropdownMenu');
+            
+            if (container && !container.contains(event.target)) {
+                menu.classList.remove('show');
+                document.getElementById('dropdownArrow').textContent = '▼';
+            }
+        });
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const res = await fetch('/api/auth/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.username || 'User';
+                    document.getElementById('userAvatar').textContent = (data.user.username || 'U')[0].toUpperCase();
+                }
+            } catch (error) {
+                console.error('Error loading user:', error);
+            }
+        }
+
+        // Load REAL positions from database - NO MOCK DATA
+        async function loadPositions() {
+            try {
+                // Try to get positions from API
+                const response = await fetch('/api/trading-v2/positions/all', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // Use real data from database, or empty array if none
+                    allPositions = data.success ? data.data || [] : [];
+                } else {
+                    // API error - show empty state
+                    allPositions = [];
+                    console.warn('API returned error, showing empty state');
+                }
+
+                applyFilters();
+                updateStats();
+
+            } catch (error) {
+                // Network error - show empty state
+                console.error('Error loading positions:', error);
+                allPositions = [];
+                applyFilters();
+                updateStats();
+            }
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const asset = document.getElementById('assetFilter').value;
+            const reason = document.getElementById('reasonFilter').value;
+            const days = document.getElementById('dateFilter').value;
+            
+            filteredPositions = allPositions.filter(pos => {
+                // Filter by status
+                if (currentTab === 'closed' && pos.status !== 'CLOSED' && pos.status !== 'LIQUIDATED') {
+                    return false;
+                }
+
+                // Filter by asset
+                if (asset !== 'all' && pos.asset !== asset) return false;
+
+                // Filter by close reason
+                if (reason !== 'all') {
+                    const reasonMap = {
+                        'Closed': ['Closed', 'CLOSED'],
+                        'Stop Loss': ['Stop Loss'],
+                        'Take Profit': ['Take Profit'],
+                        'Liquidation': ['Liquidation'],
+                        'Swap Fee': ['Swap Fee']
+                    };
+                    
+                    const allowedReasons = reasonMap[reason] || [reason];
+                    if (!allowedReasons.includes(pos.close_reason)) return false;
+                }
+
+                // Filter by date
+                if (days !== 'all' && pos.closed_at) {
+                    const cutoff = (Date.now() / 1000) - (parseInt(days) * 86400);
+                    if (pos.closed_at < cutoff) return false;
+                }
+
+                return true;
+            });
+
+            renderHistory();
+        }
+
+        // Update statistics
+        function updateStats() {
+            const closedPositions = allPositions.filter(p => p.status === 'CLOSED' || p.status === 'LIQUIDATED');
+            
+            const totalTrades = closedPositions.length;
+            const winningTrades = closedPositions.filter(p => (p.pnl || 0) > 0).length;
+            const winRate = totalTrades > 0 ? (winningTrades / totalTrades * 100).toFixed(1) : 0;
+            
+            const netPnl = closedPositions.reduce((sum, p) => sum + (p.pnl || 0), 0);
+            const bestTrade = closedPositions.length > 0 ? Math.max(...closedPositions.map(p => p.pnl || 0)) : 0;
+            
+            document.getElementById('totalTrades').textContent = totalTrades;
+            document.getElementById('winRate').textContent = winRate + '%';
+            document.getElementById('netPnl').textContent = '$' + netPnl.toFixed(2);
+            document.getElementById('bestTrade').textContent = '$' + bestTrade.toFixed(2);
+        }
+
+        // Render history cards
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            
+            if (filteredPositions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div class="text-lg font-medium">No closed trades found</div>
+                        <div class="text-sm text-gray-400 mt-2">Start trading to see your history here</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            filteredPositions.forEach(pos => {
+                const pnl = pos.pnl || 0;
+                const pnlClass = pnl >= 0 ? 'profit' : 'loss';
+                const reasonClass = (pos.close_reason || 'Closed').replace(' ', '-');
+                
+                const entryDate = pos.created_at ? new Date(pos.created_at * 1000).toLocaleDateString() : 'N/A';
+                const closeDate = pos.closed_at ? new Date(pos.closed_at * 1000).toLocaleDateString() : 'N/A';
+                
+                html += `
+                    <div class="history-card ${pnlClass}">
+                        <div class="history-header">
+                            <div class="flex items-center gap-2">
+                                <span class="asset-badge">${pos.asset}</span>
+                                <span class="side-badge ${pos.side}">${pos.side}</span>
+                            </div>
+                            <span class="close-reason ${reasonClass}">${pos.close_reason || 'Closed'}</span>
+                        </div>
+
+                        <div class="history-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Volume</span>
+                                <span class="detail-value">${pos.volume}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Entry</span>
+                                <span class="detail-value">$${pos.entry_price?.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Close</span>
+                                <span class="detail-value">$${pos.close_price?.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Margin</span>
+                                <span class="detail-value">$${pos.margin?.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Fee</span>
+                                <span class="detail-value">$${pos.fee?.toFixed(2)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Opened</span>
+                                <span class="date-value">${entryDate}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <span class="date-value">Closed: ${closeDate}</span>
+                            <span class="pnl-value ${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Load history based on tab
+        function loadHistory(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            applyFilters();
+        }
+
+        // Initialize
+        loadUserData();
+        loadPositions();
+
+        // Refresh every 30 seconds
+        setInterval(loadPositions, 30000);
+    </script>
+</body>
+</html>

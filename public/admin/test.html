@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">API Test Page</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <h2 class="text-xl font-bold mb-4">Test Master Wallet Routes</h2>
+            <div class="space-y-2">
+                <button onclick="testEndpoint('/api/master/test')" class="bg-blue-600 text-white px-4 py-2 rounded mr-2">Test Route</button>
+                <button onclick="testEndpoint('/api/master/balances')" class="bg-green-600 text-white px-4 py-2 rounded mr-2">Get Balances</button>
+                <button onclick="testEndpoint('/api/master/users/balances')" class="bg-purple-600 text-white px-4 py-2 rounded">Get Users</button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Response:</h2>
+            <pre id="response" class="bg-gray-100 p-4 rounded overflow-auto max-h-96"></pre>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+
+        async function testEndpoint(url) {
+            const responseEl = document.getElementById('response');
+            responseEl.textContent = 'Loading...';
+            
+            try {
+                const res = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await res.json();
+                responseEl.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

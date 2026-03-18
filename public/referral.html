@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-600">Referral Program</h1>
+            <div class="space-x-2">
+                <a href="/dashboard" class="bg-gray-200 px-4 py-2 rounded-xl text-sm">Dashboard</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-xl text-sm">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 pb-20">
+        <!-- Referral Code Card -->
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg mb-4">
+            <h2 class="text-lg font-semibold mb-2">Your Referral Link</h2>
+            <p class="text-sm opacity-90 mb-3">Share this link. Earn commissions when they trade!</p>
+            <div class="bg-white/20 rounded-xl p-3 mb-2">
+                <p class="text-sm font-mono break-all" id="referralLink">Loading...</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="copyLink()" class="flex-1 bg-white/20 py-2 rounded-xl text-sm font-medium hover:bg-white/30">
+                    Copy Link
+                </button>
+            </div>
+        </div>
+
+        <!-- Tier Badge -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="text-gray-500 text-sm">Current Tier</span>
+                    <p class="text-2xl font-bold" id="currentTier">1</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-gray-500 text-sm">Commission Rate</span>
+                    <p class="text-2xl font-bold text-green-600" id="commissionRate">10%</p>
+                </div>
+            </div>
+            <div class="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div id="tierProgress" class="h-full bg-blue-600" style="width: 0%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2" id="tierProgressText"></p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-white rounded-2xl shadow-sm p-4">
+                <span class="text-gray-500 text-sm">Total Referrals</span>
+                <p class="text-2xl font-bold" id="totalReferrals">0</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm p-4">
+                <span class="text-gray-500 text-sm">Active Traders</span>
+                <p class="text-2xl font-bold" id="activeReferrals">0</p>
+            </div>
+        </div>
+
+        <!-- Balance Cards -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <h3 class="font-semibold mb-3">Referral Balance</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-blue-50 p-3 rounded-xl">
+                    <span class="text-blue-600 text-sm">USDC</span>
+                    <p class="text-xl font-bold text-blue-700" id="balanceUsdc">0.00</p>
+                </div>
+                <div class="bg-green-50 p-3 rounded-xl">
+                    <span class="text-green-600 text-sm">USDT</span>
+                    <p class="text-xl font-bold text-green-700" id="balanceUsdt">0.00</p>
+                </div>
+            </div>
+            <button onclick="showTransferModal()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold mt-3">
+                Transfer to Main Wallet
+            </button>
+        </div>
+
+        <!-- Earnings Summary -->
+        <div class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+            <h3 class="font-semibold mb-3">Earnings Summary</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total Earned:</span>
+                    <span class="font-bold" id="totalEarned">$0.00</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Pending:</span>
+                    <span class="font-bold text-yellow-600" id="pendingEarned">$0.00</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Withdrawn:</span>
+                    <span class="font-bold text-green-600" id="withdrawnEarned">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commission History -->
+        <div class="bg-white rounded-2xl shadow-sm p-4">
+            <h3 class="font-semibold mb-3">Recent Commissions</h3>
+            <div id="commissionsList" class="space-y-2">
+                <div class="text-center text-gray-500 py-4">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Modal -->
+    <div id="transferModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">Transfer to Main Wallet</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Select Token</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="selectTransferToken('USDC')" class="token-option p-3 border-2 rounded-xl text-center" data-token="USDC">
+                        <span class="block text-2xl text-blue-600">$</span>
+                        <span class="font-medium">USDC</span>
+                    </button>
+                    <button onclick="selectTransferToken('USDT')" class="token-option p-3 border-2 rounded-xl text-center" data-token="USDT">
+                        <span class="block text-2xl text-green-600">₮</span>
+                        <span class="font-medium">USDT</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Amount</label>
+                <input type="number" id="transferAmount" step="0.01" min="0" class="w-full p-3 border rounded-xl">
+                <p class="text-sm text-gray-500 mt-1">Available: <span id="availableAmount">0.00</span> <span id="availableToken">USDC</span></p>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="confirmTransfer()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold">
+                    Transfer
+                </button>
+                <button onclick="closeTransferModal()" class="flex-1 bg-gray-200 py-3 rounded-xl font-semibold">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let referralData = {};
+        let selectedToken = 'USDC';
+
+        async function loadReferralData() {
+            try {
+                const res = await fetch('/api/referral', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    referralData = data.data;
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Error loading referral data:', error);
+            }
+        }
+
+        async function loadCommissions() {
+            try {
+                const res = await fetch('/api/referral/commissions', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    displayCommissions(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading commissions:', error);
+            }
+        }
+
+        function updateUI() {
+            const d = referralData;
+            
+            // Referral link
+            document.getElementById('referralLink').textContent = d.link || 'Loading...';
+            
+            // Tier info
+            document.getElementById('currentTier').textContent = d.tier || 1;
+            document.getElementById('commissionRate').textContent = (d.stats?.currentCommission || 10) + '%';
+            
+            // Stats
+            document.getElementById('totalReferrals').textContent = d.stats?.totalReferrals || 0;
+            document.getElementById('activeReferrals').textContent = d.stats?.activeReferrals || 0;
+            
+            // Balances
+            document.getElementById('balanceUsdc').textContent = (d.balance?.usdc || 0).toFixed(2);
+            document.getElementById('balanceUsdt').textContent = (d.balance?.usdt || 0).toFixed(2);
+            
+            // Earnings
+            document.getElementById('totalEarned').textContent = '$' + (d.stats?.totalCommissions || 0).toFixed(2);
+            document.getElementById('pendingEarned').textContent = '$' + (d.stats?.pendingCommissions || 0).toFixed(2);
+            document.getElementById('withdrawnEarned').textContent = '$' + (d.stats?.paidCommissions || 0).toFixed(2);
+            
+            // Tier progress
+            if (d.stats) {
+                const total = d.stats.totalReferrals || 0;
+                const currentTier = d.tier || 1;
+                
+                if (currentTier < 4) {
+                    const nextReq = d.stats.nextTierRequirement || 5;
+                    const progress = (total / nextReq) * 100;
+                    document.getElementById('tierProgress').style.width = Math.min(progress, 100) + '%';
+                    document.getElementById('tierProgressText').textContent = 
+                        `${total}/${nextReq} referrals for Tier ${currentTier + 1} (${d.stats.nextTierCommission}%)`;
+                } else {
+                    document.getElementById('tierProgress').style.width = '100%';
+                    document.getElementById('tierProgressText').textContent = 
+                        `Maximum tier reached! ${d.stats.currentCommission}% commission`;
+                }
+            }
+        }
+
+        function displayCommissions(commissions) {
+            const container = document.getElementById('commissionsList');
+            
+            if (!commissions || commissions.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4">No commissions yet</div>';
+                return;
+            }
+
+            let html = '';
+            commissions.slice(0, 10).forEach(c => {
+                const date = new Date(c.created_at * 1000).toLocaleDateString();
+                const statusColor = c.status === 'paid' ? 'text-green-600' : 'text-yellow-600';
+                
+                html += `
+                    <div class="bg-gray-50 p-3 rounded-xl">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-sm font-medium">+${c.amount} ${c.token}</span>
+                                <p class="text-xs text-gray-500">${date}</p>
+                                <p class="text-xs text-gray-500">From trading fee • Tier ${c.tier} (${c.percentage}%)</p>
+                                <p class="text-xs text-gray-500">Referred: ${c.referred_username || 'User'}</p>
+                            </div>
+                            <span class="text-xs ${statusColor}">${c.status}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function selectTransferToken(token) {
+            selectedToken = token;
+            document.querySelectorAll('.token-option').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+                if (btn.dataset.token === token) {
+                    btn.classList.add('border-blue-500', 'bg-blue-50');
+                }
+            });
+            
+            const balance = token === 'USDC' ? referralData.balance?.usdc || 0 : referralData.balance?.usdt || 0;
+            document.getElementById('availableAmount').textContent = balance.toFixed(2);
+            document.getElementById('availableToken').textContent = token;
+        }
+
+        function showTransferModal() {
+            selectTransferToken('USDC');
+            document.getElementById('transferModal').classList.remove('hidden');
+        }
+
+        function closeTransferModal() {
+            document.getElementById('transferModal').classList.add('hidden');
+            document.getElementById('transferAmount').value = '';
+        }
+
+        async function confirmTransfer() {
+            const amount = parseFloat(document.getElementById('transferAmount').value);
+            
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/referral/transfer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        token: selectedToken,
+                        amount: amount
+                    })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    closeTransferModal();
+                    loadReferralData();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Transfer failed');
+            }
+        }
+
+        function copyLink() {
+            const link = document.getElementById('referralLink').textContent;
+            navigator.clipboard.writeText(link);
+            alert('Referral link copied!');
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+
+        // Load data
+        loadReferralData();
+        loadCommissions();
+        
+        // Refresh every 30 seconds
+        setInterval(loadReferralData, 30000);
+        setInterval(loadCommissions, 30000);
+    </script>
+</body>
+</html>

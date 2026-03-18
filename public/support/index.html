@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center max-w-4xl mx-auto">
+            <a href="/" class="text-xl font-bold text-blue-600">Solzity</a>
+            <div class="flex items-center gap-3">
+                <a href="/login-enhanced" class="text-blue-600">Login</a>
+                <a href="/register-enhanced" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm">Sign Up</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 max-w-3xl mx-auto">
+        <h1 class="text-3xl font-bold mb-2">Support Center</h1>
+        <p class="text-gray-600 mb-8">How can we help you today?</p>
+
+        <!-- Search -->
+        <div class="bg-white rounded-2xl p-4 mb-8 shadow-sm">
+            <input type="text" placeholder="Search for help..." class="w-full p-4 border rounded-xl">
+        </div>
+
+        <!-- FAQ Categories -->
+        <div class="grid md:grid-cols-2 gap-4 mb-8">
+            <a href="#trading" class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+                <span class="text-3xl mb-3 block">📊</span>
+                <h3 class="font-bold mb-2">Trading</h3>
+                <p class="text-sm text-gray-500 mb-3">How to trade, leverage, fees</p>
+                <span class="text-blue-600 text-sm">View 6 articles →</span>
+            </a>
+            
+            <a href="#deposits" class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+                <span class="text-3xl mb-3 block">💰</span>
+                <h3 class="font-bold mb-2">Deposits & Withdrawals</h3>
+                <p class="text-sm text-gray-500 mb-3">How to fund your account</p>
+                <span class="text-blue-600 text-sm">View 4 articles →</span>
+            </a>
+            
+            <a href="#security" class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+                <span class="text-3xl mb-3 block">🔐</span>
+                <h3 class="font-bold mb-2">Account Security</h3>
+                <p class="text-sm text-gray-500 mb-3">2FA, passwords, verification</p>
+                <span class="text-blue-600 text-sm">View 5 articles →</span>
+            </a>
+            
+            <a href="#ngn" class="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+                <span class="text-3xl mb-3 block">🇳🇬</span>
+                <h3 class="font-bold mb-2">NGN Wallet</h3>
+                <p class="text-sm text-gray-500 mb-3">Nigeria Naira deposits</p>
+                <span class="text-blue-600 text-sm">View 3 articles →</span>
+            </a>
+        </div>
+
+        <!-- Trading Articles -->
+        <div id="trading" class="bg-white rounded-2xl p-6 shadow-sm mb-8">
+            <h2 class="text-xl font-bold mb-4">📊 Trading</h2>
+            <div class="space-y-3">
+                <a href="/help/how-to-trade" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to start trading with 100x leverage</p>
+                    <p class="text-sm text-gray-500">Learn the basics of margin trading</p>
+                </a>
+                <a href="/help/understanding-leverage" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Understanding 100x leverage</p>
+                    <p class="text-sm text-gray-500">How leverage amplifies profits and losses</p>
+                </a>
+                <a href="/help/fees" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Trading fees explained</p>
+                    <p class="text-sm text-gray-500">$15 trading fee, $5 daily swap fee</p>
+                </a>
+                <a href="/help/stop-loss-take-profit" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Stop Loss & Take Profit orders</p>
+                    <p class="text-sm text-gray-500">Protect your capital and secure profits</p>
+                </a>
+                <a href="/help/liquidation" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Liquidation explained</p>
+                    <p class="text-sm text-gray-500">What happens at 10% margin level</p>
+                </a>
+                <a href="/help/managing-positions" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Managing your positions</p>
+                    <p class="text-sm text-gray-500">View, close, and monitor positions</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Deposits Articles -->
+        <div id="deposits" class="bg-white rounded-2xl p-6 shadow-sm mb-8">
+            <h2 class="text-xl font-bold mb-4">💰 Deposits & Withdrawals</h2>
+            <div class="space-y-3">
+                <a href="/help/deposit-ngn" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to deposit NGN via Paystack</p>
+                    <p class="text-sm text-gray-500">Step-by-step guide for Nigerian users</p>
+                </a>
+                <a href="/help/withdraw-ngn" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to withdraw NGN to your bank</p>
+                    <p class="text-sm text-gray-500">Withdraw to Nigerian bank accounts</p>
+                </a>
+                <a href="/help/deposit-crypto" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to deposit crypto</p>
+                    <p class="text-sm text-gray-500">SOL, USDC, USDT deposits</p>
+                </a>
+                <a href="/help/withdraw-crypto" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to withdraw crypto</p>
+                    <p class="text-sm text-gray-500">Withdraw to external wallets</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Security Articles -->
+        <div id="security" class="bg-white rounded-2xl p-6 shadow-sm mb-8">
+            <h2 class="text-xl font-bold mb-4">🔐 Account Security</h2>
+            <div class="space-y-3">
+                <a href="/help/enable-2fa" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to enable 2FA</p>
+                    <p class="text-sm text-gray-500">Secure your account with 2-factor authentication</p>
+                </a>
+                <a href="/help/change-password" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">How to change your password</p>
+                    <p class="text-sm text-gray-500">Update your password regularly</p>
+                </a>
+                <a href="/help/email-verification" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Email verification</p>
+                    <p class="text-sm text-gray-500">Verify your email address</p>
+                </a>
+                <a href="/help/login-alerts" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Login alerts</p>
+                    <p class="text-sm text-gray-500">Get notified of new logins</p>
+                </a>
+                <a href="/help/account-lockout" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Account lockout</p>
+                    <p class="text-sm text-gray-500">What to do after failed attempts</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- NGN Articles -->
+        <div id="ngn" class="bg-white rounded-2xl p-6 shadow-sm mb-8">
+            <h2 class="text-xl font-bold mb-4">🇳🇬 NGN Wallet</h2>
+            <div class="space-y-3">
+                <a href="/help/ngn-wallet" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">NGN Wallet overview</p>
+                    <p class="text-sm text-gray-500">Deposit, withdraw, convert NGN</p>
+                </a>
+                <a href="/help/ngn-to-usdc" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Convert NGN to USDC</p>
+                    <p class="text-sm text-gray-500">Buy USDC with Naira</p>
+                </a>
+                <a href="/help/usdc-to-ngn" class="block p-3 hover:bg-gray-50 rounded-xl">
+                    <p class="font-medium">Convert USDC to NGN</p>
+                    <p class="text-sm text-gray-500">Sell USDC for Naira</p>
+                </a>
+            </div>
+        </div>
+
+        <!-- Still Need Help -->
+        <div class="bg-blue-50 rounded-2xl p-6 text-center">
+            <h2 class="text-xl font-bold mb-2">Still need help?</h2>
+            <p class="text-gray-600 mb-4">Our support team is available 24/7</p>
+            <a href="/contact" class="bg-blue-600 text-white px-6 py-3 rounded-xl inline-block">
+                Contact Support
+            </a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="bg-white mt-12 py-6 px-4 text-center text-sm text-gray-500">
+        <p>© 2026 Solzity. All rights reserved.</p>
+        <div class="flex justify-center gap-4 mt-2">
+            <a href="/legal/terms">Terms</a>
+            <a href="/legal/privacy">Privacy</a>
+            <a href="/legal/risk">Risk Disclosure</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">User Management</h1>
+            <div class="space-x-2">
+                <a href="/admin" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Back</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <!-- Fee Settings Tabs -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">⚙️ Fee Settings</h2>
+            
+            <div class="border-b border-gray-200 mb-4">
+                <button class="tab-btn px-4 py-2 bg-blue-600 text-white rounded-t" onclick="showTab('withdrawal')">Withdrawal Fees</button>
+                <button class="tab-btn px-4 py-2 bg-gray-200 rounded-t" onclick="showTab('transfer')">Transfer Fees</button>
+            </div>
+
+            <!-- Withdrawal Fees Tab -->
+            <div id="withdrawalTab" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">SOL Withdrawal Fee</label>
+                        <input type="number" id="withdrawalSol" step="0.001" min="0" class="w-full p-2 border rounded">
+                        <p class="text-xs text-gray-500 mt-1">Current: 0.01 SOL</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">USDC Withdrawal Fee</label>
+                        <input type="number" id="withdrawalUsdc" step="0.1" min="0" class="w-full p-2 border rounded">
+                        <p class="text-xs text-gray-500 mt-1">Current: $3.00</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">USDT Withdrawal Fee</label>
+                        <input type="number" id="withdrawalUsdt" step="0.1" min="0" class="w-full p-2 border rounded">
+                        <p class="text-xs text-gray-500 mt-1">Current: $3.00</p>
+                    </div>
+                </div>
+                <button onclick="updateWithdrawalFees()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Update Withdrawal Fees
+                </button>
+            </div>
+
+            <!-- Transfer Fees Tab -->
+            <div id="transferTab" class="tab-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">SOL Transfer Fee</label>
+                        <input type="number" id="transferSol" step="0.001" min="0" class="w-full p-2 border rounded">
+                        <p class="text-xs text-gray-500 mt-1">Current: 0.001 SOL</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">USDC Transfer Fee</label>
+                        <input type="number" id="transferUsdc" step="0.1" min="0" class="w-full p-2 border rounded">
+                        <p class="text-xs text-gray-500 mt-1">Current: $0.50</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">USDT Transfer Fee</label>
+                        <input type="number" id="transferUsdt" step="0.1" min="0" class="w-full p-2 border rounded">
+                        <p class="text-xs text-gray-500 mt-1">Current: $0.50</p>
+                    </div>
+                </div>
+                <button onclick="updateTransferFees()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Update Transfer Fees
+                </button>
+            </div>
+        </div>
+
+        <!-- Users List -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">👥 Users</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full border">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left">ID</th>
+                            <th class="px-4 py-3 text-left">Username</th>
+                            <th class="px-4 py-3 text-left">Email</th>
+                            <th class="px-4 py-3 text-right">SOL</th>
+                            <th class="px-4 py-3 text-right">USDC</th>
+                            <th class="px-4 py-3 text-right">USDT</th>
+                            <th class="px-4 py-3 text-center">2FA</th>
+                            <th class="px-4 py-3 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody">
+                        <tr><td colspan="8" class="text-center py-8">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Adjustment Modal -->
+    <div id="balanceModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-bold mb-4" id="modalTitle">Adjust Balance</h3>
+            <p class="text-gray-600 mb-4" id="modalUser"></p>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Token</label>
+                <select id="modalToken" class="w-full p-2 border rounded">
+                    <option value="SOL">SOL</option>
+                    <option value="USDC">USDC</option>
+                    <option value="USDT">USDT</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Operation</label>
+                <select id="modalOperation" class="w-full p-2 border rounded">
+                    <option value="add">Add to balance</option>
+                    <option value="subtract">Subtract from balance</option>
+                    <option value="set">Set exact balance</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Amount</label>
+                <input type="number" id="modalAmount" step="0.001" min="0" class="w-full p-2 border rounded">
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Reason (Optional)</label>
+                <input type="text" id="modalReason" class="w-full p-2 border rounded" placeholder="e.g., Bonus, Correction, Refund">
+            </div>
+
+            <div class="flex space-x-2">
+                <button onclick="confirmAdjustment()" class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                    Confirm
+                </button>
+                <button onclick="closeModal()" class="flex-1 bg-gray-200 py-2 rounded hover:bg-gray-300">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) window.location.href = '/admin/login';
+
+        let currentUserId = null;
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tab + 'Tab').classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-200');
+            });
+            event.target.classList.add('bg-blue-600', 'text-white');
+        }
+
+        async function loadFees() {
+            try {
+                const res = await fetch('/api/admin/users/settings/fees', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // Withdrawal fees
+                    document.getElementById('withdrawalSol').value = data.fees.withdrawal.SOL;
+                    document.getElementById('withdrawalUsdc').value = data.fees.withdrawal.USDC;
+                    document.getElementById('withdrawalUsdt').value = data.fees.withdrawal.USDT;
+                    
+                    // Transfer fees
+                    document.getElementById('transferSol').value = data.fees.transfer.SOL;
+                    document.getElementById('transferUsdc').value = data.fees.transfer.USDC;
+                    document.getElementById('transferUsdt').value = data.fees.transfer.USDT;
+                }
+            } catch (error) {
+                console.error('Error loading fees:', error);
+            }
+        }
+
+        async function updateWithdrawalFees() {
+            const fees = {
+                sol: parseFloat(document.getElementById('withdrawalSol').value),
+                usdc: parseFloat(document.getElementById('withdrawalUsdc').value),
+                usdt: parseFloat(document.getElementById('withdrawalUsdt').value)
+            };
+
+            try {
+                const res = await fetch('/api/admin/users/settings/withdrawal-fees', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(fees)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Withdrawal fees updated successfully');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error updating fees');
+            }
+        }
+
+        async function updateTransferFees() {
+            const fees = {
+                sol: parseFloat(document.getElementById('transferSol').value),
+                usdc: parseFloat(document.getElementById('transferUsdc').value),
+                usdt: parseFloat(document.getElementById('transferUsdt').value)
+            };
+
+            try {
+                const res = await fetch('/api/admin/users/settings/transfer-fees', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(fees)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Transfer fees updated successfully');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error updating fees');
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const tbody = document.getElementById('usersBody');
+                
+                if (!data.success) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-600">Error loading users</td></tr>';
+                    return;
+                }
+                
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">No users found</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.users.forEach(user => {
+                    html += `
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="px-4 py-3">${user.id}</td>
+                            <td class="px-4 py-3">${user.username || '-'}</td>
+                            <td class="px-4 py-3">${user.email}</td>
+                            <td class="px-4 py-3 text-right font-mono">${(user.sol_balance || 0).toFixed(4)}</td>
+                            <td class="px-4 py-3 text-right font-mono">$${(user.usdc_balance || 0).toFixed(2)}</td>
+                            <td class="px-4 py-3 text-right font-mono">$${(user.usdt_balance || 0).toFixed(2)}</td>
+                            <td class="px-4 py-3 text-center">
+                                ${user.twofa_enabled ? '✅' : '❌'}
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="openBalanceModal(${user.id}, '${user.username || user.email}')" 
+                                        class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                                    Adjust Balance
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersBody').innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-600">Error loading users</td></tr>';
+            }
+        }
+
+        function openBalanceModal(userId, userInfo) {
+            currentUserId = userId;
+            document.getElementById('modalUser').textContent = `User: ${userInfo}`;
+            document.getElementById('balanceModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('balanceModal').classList.add('hidden');
+            document.getElementById('modalAmount').value = '';
+            document.getElementById('modalReason').value = '';
+            currentUserId = null;
+        }
+
+        async function confirmAdjustment() {
+            if (!currentUserId) return;
+
+            const tokenSel = document.getElementById('modalToken').value;
+            const operation = document.getElementById('modalOperation').value;
+            const amount = parseFloat(document.getElementById('modalAmount').value);
+            const reason = document.getElementById('modalReason').value;
+
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/admin/users/${currentUserId}/balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        token: tokenSel,
+                        amount: amount,
+                        type: operation,
+                        reason: reason
+                    })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ Balance updated successfully`);
+                    closeModal();
+                    loadUsers();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error updating balance: ' + error.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+
+        // Load data on page load
+        loadFees();
+        loadUsers();
+    </script>
+</body>
+</html>

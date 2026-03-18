@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles to complement Tailwind */
+        .progress-fill {
+            transition: width 0.3s ease;
+        }
+        .metric-row {
+            transition: background-color 0.2s;
+        }
+        .metric-row:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header - Exactly like dashboard and trading page -->
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-bold text-blue-600">Solzity</h1>
+                
+                <!-- Navigation Dropdown Menu -->
+                <div class="relative" id="dropdownContainer">
+                    <button onclick="toggleDropdown()" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-medium transition" id="menuButton">
+                        <span>☰</span>
+                        <span>Menu</span>
+                        <span class="text-xs" id="dropdownArrow">▼</span>
+                    </button>
+                    
+                    <div class="absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-lg py-2 hidden border border-gray-100" id="dropdownMenu">
+                        <a href="/trading-v2" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-yellow-600">📊</span>
+                            <span class="text-sm font-medium">Trade</span>
+                        </a>
+                        <a href="/competitions" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-orange-600">🏆</span>
+                            <span class="text-sm font-medium">Competitions</span>
+                        </a>
+                        <a href="/ngn" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-green-600">🇳🇬</span>
+                            <span class="text-sm font-medium">NGN Wallet</span>
+                        </a>
+                        <a href="/trading-v2/history" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-green-600">💸</span>
+                            <span class="text-sm font-medium">Order History</span>
+                        </a>
+                        <a href="/withdraw" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-red-600">🏧</span>
+                            <span class="text-sm font-medium">Withdraw</span>
+                        </a>
+                        <a href="/deposits" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-purple-600">📜</span>
+                            <span class="text-sm font-medium">History</span>
+                        </a>
+                        <a href="/dashboard" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-blue-600">📈</span>
+                            <span class="text-sm font-medium">Dashboard</span>
+                        </a>
+                        <div class="border-t border-gray-100 my-1"></div>
+                        <a href="/2fa-setup" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-gray-600">🔐</span>
+                            <span class="text-sm font-medium">2FA Setup</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded-xl">
+                    <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold" id="userAvatar">U</div>
+                    <span class="text-sm font-medium hidden sm:inline" id="userName">Loading...</span>
+                </div>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-xl text-sm">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Main Dashboard Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm">
+            <h2 class="text-xl font-bold mb-4">Account Overview</h2>
+            
+            <!-- Metrics Grid -->
+            <div class="space-y-3">
+                <!-- Balance -->
+                <div class="metric-row flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                    <span class="text-gray-600">Balance</span>
+                    <span class="text-xl font-bold text-blue-600" id="balance">0.00</span>
+                </div>
+                
+                <!-- Equity -->
+                <div class="metric-row flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                    <span class="text-gray-600">Equity</span>
+                    <span class="text-xl font-bold text-green-600" id="equity">0.00</span>
+                </div>
+                
+                <!-- Margin -->
+                <div class="metric-row flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                    <span class="text-gray-600">Margin</span>
+                    <span class="text-xl font-bold text-orange-600" id="margin">0.00</span>
+                </div>
+                
+                <!-- Free Margin -->
+                <div class="metric-row flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                    <span class="text-gray-600">Free Margin</span>
+                    <span class="text-xl font-bold text-purple-600" id="freeMargin">0.00</span>
+                </div>
+                
+                <!-- Margin Level with Progress Bar -->
+                <div class="p-3 bg-gray-50 rounded-xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-600">Margin Level</span>
+                        <span class="text-xl font-bold" id="marginLevel">0%</span>
+                    </div>
+                    <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="progress-fill h-full rounded-full" id="marginProgress" style="width: 0%; background-color: #16C784;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stop Out Warning - Exactly as original but styled -->
+            <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl hidden" id="stopOutWarning">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">⚠️</span>
+                    <div>
+                        <p class="text-red-700 font-medium">Stop Out Level Warning</p>
+                        <p class="text-sm text-red-600">Equity less than 10% of margin</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swap Fee Info - Original info, new style -->
+            <div class="mt-4 p-4 bg-gray-50 rounded-xl">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">💰</span>
+                        <div>
+                            <p class="font-medium text-gray-800">Daily Swap Fee</p>
+                            <p class="text-sm text-gray-500">$5 per day</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-gray-800">4:00 PM</p>
+                        <p class="text-xs text-gray-500">Nigeria time</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Last Update -->
+            <div class="mt-4 text-right">
+                <p class="text-xs text-gray-400" id="lastUpdate"></p>
+            </div>
+        </div>
+
+        <!-- Quick Links - Replacing bottom nav -->
+        <div class="grid grid-cols-3 gap-3 mt-4">
+            <a href="/trading-v2" class="bg-white p-4 rounded-xl shadow-sm text-center hover:bg-gray-50 transition">
+                <span class="text-2xl block mb-1">📊</span>
+                <span class="text-sm font-medium">Trade</span>
+            </a>
+            <a href="/deposits" class="bg-white p-4 rounded-xl shadow-sm text-center hover:bg-gray-50 transition">
+                <span class="text-2xl block mb-1">📜</span>
+                <span class="text-sm font-medium">History</span>
+            </a>
+            <a href="/transfer" class="bg-white p-4 rounded-xl shadow-sm text-center hover:bg-gray-50 transition">
+                <span class="text-2xl block mb-1">💸</span>
+                <span class="text-sm font-medium">Transfer</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Dropdown functionality
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.toggle('hidden');
+            arrow.textContent = menu.classList.contains('hidden') ? '▼' : '▲';
+        }
+
+        function closeDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.add('hidden');
+            arrow.textContent = '▼';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('dropdownContainer');
+            const menu = document.getElementById('dropdownMenu');
+            
+            if (container && !container.contains(event.target)) {
+                menu.classList.add('hidden');
+                document.getElementById('dropdownArrow').textContent = '▼';
+            }
+        });
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('token');
+            document.cookie = 'trading_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/';
+        }
+
+        // Load user data for avatar
+        async function loadUserData() {
+            const token = localStorage.getItem('token') || getCookie('trading_token');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/auth/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.username || 'User';
+                    document.getElementById('userAvatar').textContent = (data.user.username || 'U')[0].toUpperCase();
+                }
+            } catch (error) {
+                console.error('Error loading user:', error);
+            }
+        }
+
+        // Original cookie function
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+        }
+
+        // Original token check
+        const token = getCookie('trading_token') || localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Original dashboard functions - UNTOUCHED
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/trading-v2/orders-enhanced/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateDashboard(data.data);
+                }
+            } catch (error) {
+                console.error('Dashboard error:', error);
+            }
+        }
+
+        // Original update function - UNTOUCHED logic, just visual mapping
+        function updateDashboard(data) {
+            document.getElementById('balance').textContent = '$' + (data.balance || 0).toFixed(2);
+            document.getElementById('equity').textContent = '$' + (data.equity || 0).toFixed(2);
+            document.getElementById('margin').textContent = '$' + (data.margin || 0).toFixed(2);
+            document.getElementById('freeMargin').textContent = '$' + (data.freeMargin || 0).toFixed(2);
+            
+            const marginLevel = (data.marginLevel || 0).toFixed(0);
+            document.getElementById('marginLevel').textContent = marginLevel + '%';
+            
+            // Update demo PnL
+            const totalPnl = (data.equity || 0) - (data.balance || 0);
+            document.getElementById('demoPnl').textContent = (totalPnl >= 0 ? '+' : '') + totalPnl.toFixed(2);
+            document.getElementById('demoPnl').className = totalPnl >= 0 ? 'font-bold text-green-600' : 'font-bold text-red-600';
+            
+            // Update progress bar (scaled to 100% max)
+            const progress = Math.min(100, (data.marginLevel || 0));
+            document.getElementById('marginProgress').style.width = progress + '%';
+            
+            // Change progress bar color based on level
+            const progressBar = document.getElementById('marginProgress');
+            const warningBox = document.getElementById('stopOutWarning');
+            
+            if (progress < 10) {
+                progressBar.style.backgroundColor = '#EA3943';
+                warningBox.classList.remove('hidden');
+            } else if (progress < 20) {
+                progressBar.style.backgroundColor = '#F0B90B';
+                warningBox.classList.add('hidden');
+            } else {
+                progressBar.style.backgroundColor = '#16C784';
+                warningBox.classList.add('hidden');
+            }
+            
+            document.getElementById('lastUpdate').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+        }
+
+        // Load user and dashboard
+        loadUserData();
+        
+        if (token) {
+            loadDashboard();
+            setInterval(loadDashboard, 2000);
+        }
+    </script>
+</body>
+</html>

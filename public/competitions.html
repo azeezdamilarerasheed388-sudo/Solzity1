@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-blue-600">Trading Competitions</h1>
+            <div class="space-x-2">
+                <a href="/dashboard" class="bg-gray-200 px-4 py-2 rounded-xl text-sm">Dashboard</a>
+                <a href="/trading-v2" class="bg-gray-200 px-4 py-2 rounded-xl text-sm">Trade</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-xl text-sm">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 pb-20">
+        <!-- Tabs -->
+        <div class="flex space-x-2 mb-4 overflow-x-auto pb-1">
+            <button onclick="loadCompetitions('live')" class="tab-btn px-4 py-2 bg-blue-600 text-white rounded-xl whitespace-nowrap" data-tab="live">
+                🔴 Live Now
+            </button>
+            <button onclick="loadCompetitions('upcoming')" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="upcoming">
+                ⏳ Upcoming
+            </button>
+            <button onclick="loadCompetitions('ended')" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="ended">
+                ✅ Ended
+            </button>
+            <button onclick="loadMyStats()" class="tab-btn px-4 py-2 bg-gray-200 rounded-xl whitespace-nowrap" data-tab="stats">
+                📊 My Stats
+            </button>
+        </div>
+
+        <!-- Live Competitions -->
+        <div id="liveTab" class="tab-content">
+            <div id="liveCompetitions" class="space-y-4">
+                <div class="text-center text-gray-500 py-8">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Upcoming Competitions -->
+        <div id="upcomingTab" class="tab-content hidden">
+            <div id="upcomingCompetitions" class="space-y-4">
+                <div class="text-center text-gray-500 py-8">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Ended Competitions -->
+        <div id="endedTab" class="tab-content hidden">
+            <div id="endedCompetitions" class="space-y-4">
+                <div class="text-center text-gray-500 py-8">Loading...</div>
+            </div>
+        </div>
+
+        <!-- My Stats Tab -->
+        <div id="statsTab" class="tab-content hidden">
+            <div class="bg-white rounded-2xl shadow-sm p-5 mb-4">
+                <h2 class="text-xl font-bold mb-4">🏆 My Competition Stats</h2>
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-blue-50 p-4 rounded-xl text-center">
+                        <span class="text-blue-600 text-sm">Competitions</span>
+                        <p class="text-2xl font-bold text-blue-700" id="totalCompetitions">0</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-xl text-center">
+                        <span class="text-green-600 text-sm">Best Rank</span>
+                        <p class="text-2xl font-bold text-green-700" id="bestRank">-</p>
+                    </div>
+                    <div class="bg-yellow-50 p-4 rounded-xl text-center">
+                        <span class="text-yellow-600 text-sm">Total Prizes</span>
+                        <p class="text-2xl font-bold text-yellow-700" id="totalPrizes">$0</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-xl text-center">
+                        <span class="text-purple-600 text-sm">Win Rate</span>
+                        <p class="text-2xl font-bold text-purple-700" id="winRate">0%</p>
+                    </div>
+                </div>
+
+                <h3 class="font-semibold mb-3">My Competitions</h3>
+                <div id="myCompetitions" class="space-y-2">
+                    <div class="text-center text-gray-500 py-4">No competition history</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Competition Detail Modal -->
+    <div id="competitionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div id="competitionDetail" class="p-6">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Claim Prize Modal -->
+    <div id="claimModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">🏆 Claim Your Prize</h3>
+            <div id="claimDetails" class="mb-4"></div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">Select Token</label>
+                <select id="claimToken" class="w-full p-3 border rounded-xl">
+                    <option value="USDC">USDC</option>
+                    <option value="USDT">USDT</option>
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="confirmClaim()" class="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold">
+                    Claim Prize
+                </button>
+                <button onclick="closeClaimModal()" class="flex-1 bg-gray-200 py-3 rounded-xl font-semibold">
+                    Later
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let currentCompetition = null;
+        let currentPrize = null;
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tab + 'Tab').classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-200');
+            });
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('bg-blue-600', 'text-white');
+        }
+
+        async function loadCompetitions(type) {
+            showTab(type);
+            
+            try {
+                let url = '/api/competitions';
+                if (type === 'live') url = '/api/competitions/active';
+                else if (type === 'upcoming') url = '/api/competitions/upcoming';
+                else if (type === 'ended') url = '/api/competitions/ended';
+                
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    displayCompetitions(type, data.data);
+                }
+            } catch (error) {
+                console.error('Error loading competitions:', error);
+                document.getElementById(type + 'Competitions').innerHTML = 
+                    '<div class="text-center text-red-500 py-8">Error loading competitions</div>';
+            }
+        }
+
+        function displayCompetitions(type, competitions) {
+            const container = document.getElementById(type + 'Competitions');
+            const now = Math.floor(Date.now() / 1000);
+            
+            if (!competitions || competitions.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No competitions found</div>';
+                return;
+            }
+
+            let html = '';
+            competitions.forEach(c => {
+                const startDate = new Date(c.start_time * 1000).toLocaleString();
+                const endDate = new Date(c.end_time * 1000).toLocaleString();
+                const isLive = now >= c.start_time && now <= c.end_time;
+                const isEnded = now > c.end_time;
+                
+                let statusBadge = '';
+                if (isLive) statusBadge = '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">🔴 LIVE</span>';
+                else if (isEnded) statusBadge = '<span class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">✅ Ended</span>';
+                else statusBadge = '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">⏳ Upcoming</span>';
+                
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 ${isLive ? 'border-green-500' : isEnded ? 'border-gray-500' : 'border-yellow-500'}">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-lg font-bold">${c.name}</h3>
+                                <p class="text-sm text-gray-600">${c.description || 'No description'}</p>
+                            </div>
+                            ${statusBadge}
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-3 text-sm">
+                            <div>
+                                <span class="text-gray-500">🏆 Prize Pool:</span>
+                                <span class="font-bold ml-1">$${c.prize_pool}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">💰 Entry:</span>
+                                <span class="font-bold ml-1">${c.entry_fee > 0 ? '$' + c.entry_fee : 'Free'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">👥 Participants:</span>
+                                <span class="font-bold ml-1">${c.participantCount || 0}/${c.max_participants}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">📊 Min Trades:</span>
+                                <span class="font-bold ml-1">${c.min_trades}</span>
+                            </div>
+                        </div>
+
+                        <div class="text-xs text-gray-500 mb-3">
+                            <div>📅 Start: ${startDate}</div>
+                            <div>⏰ End: ${endDate}</div>
+                        </div>
+
+                        <button onclick="viewCompetition(${c.id})" 
+                                class="w-full bg-blue-600 text-white py-2 rounded-xl font-medium hover:bg-blue-700">
+                            ${isLive ? 'View Live Leaderboard' : isEnded ? 'View Results' : 'View Details'}
+                        </button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function viewCompetition(id) {
+            try {
+                const res = await fetch(`/api/competitions/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentCompetition = data.data;
+                    showCompetitionModal();
+                }
+            } catch (error) {
+                console.error('Error loading competition:', error);
+            }
+        }
+
+        function showCompetitionModal() {
+            const c = currentCompetition;
+            const now = Math.floor(Date.now() / 1000);
+            const isLive = now >= c.start_time && now <= c.end_time;
+            const isEnded = now > c.end_time;
+            const userId = getUserId();
+            const userEntry = c.participants?.find(p => p.user_id === userId);
+            
+            const modal = document.getElementById('competitionModal');
+            const content = document.getElementById('competitionDetail');
+            
+            // Get prizes
+            let prizesHtml = '<div class="mb-4"><h4 class="font-semibold mb-2">🏆 Prizes</h4>';
+            if (c.prizes && c.prizes.length > 0) {
+                c.prizes.forEach(p => {
+                    prizesHtml += `<div class="flex justify-between py-1"><span>${p.rank}${p.rank === 1 ? 'st' : p.rank === 2 ? 'nd' : p.rank === 3 ? 'rd' : 'th'} Place:</span><span class="font-bold text-green-600">$${p.prize_amount} ${p.prize_token}</span></div>`;
+                });
+            } else {
+                // Default prizes if not set
+                const prizes = [
+                    { rank: 1, amount: c.prize_pool * 0.5 },
+                    { rank: 2, amount: c.prize_pool * 0.3 },
+                    { rank: 3, amount: c.prize_pool * 0.2 }
+                ];
+                prizes.forEach(p => {
+                    prizesHtml += `<div class="flex justify-between py-1"><span>${p.rank}${p.rank === 1 ? 'st' : p.rank === 2 ? 'nd' : p.rank === 3 ? 'rd' : 'th'} Place:</span><span class="font-bold text-green-600">$${p.amount.toFixed(2)} USDT</span></div>`;
+                });
+            }
+            prizesHtml += '</div>';
+
+            // Leaderboard
+            let leaderboardHtml = '<h4 class="font-semibold mb-2">📊 Leaderboard</h4>';
+            if (c.participants && c.participants.length > 0) {
+                // Sort by return
+                const sorted = [...c.participants].sort((a, b) => b.current_return - a.current_return);
+                
+                leaderboardHtml += '<div class="space-y-2 max-h-60 overflow-y-auto">';
+                sorted.slice(0, 20).forEach((p, i) => {
+                    const rank = i + 1;
+                    const rankClass = rank === 1 ? 'text-yellow-600' : rank === 2 ? 'text-gray-500' : rank === 3 ? 'text-orange-600' : '';
+                    const isUser = p.user_id === userId;
+                    
+                    leaderboardHtml += `
+                        <div class="flex justify-between items-center py-2 border-b ${isUser ? 'bg-blue-50 -mx-2 px-2 rounded' : ''}">
+                            <div>
+                                <span class="font-bold ${rankClass}">#${rank}</span>
+                                <span class="ml-2 ${isUser ? 'font-bold' : ''}">${p.username || 'Anonymous'} ${isUser ? '(You)' : ''}</span>
+                            </div>
+                            <div>
+                                <span class="font-bold ${p.current_return >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    ${p.current_return >= 0 ? '+' : ''}${p.current_return.toFixed(2)}%
+                                </span>
+                                <span class="text-sm text-gray-500 ml-2">$${Math.abs(p.current_pnl || 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                leaderboardHtml += '</div>';
+            } else {
+                leaderboardHtml += '<p class="text-gray-500">No participants yet</p>';
+            }
+
+            // Check if user won prize
+            let prizeHtml = '';
+            if (isEnded && userEntry && userEntry.rank && userEntry.prize > 0) {
+                if (!userEntry.claimed) {
+                    prizeHtml = `
+                        <div class="bg-green-100 p-4 rounded-xl mb-4">
+                            <p class="text-green-800 font-semibold mb-2">🎉 Congratulations! You won $${userEntry.prize}!</p>
+                            <button onclick="claimPrize(${c.id}, ${userEntry.prize})" 
+                                    class="w-full bg-green-600 text-white py-2 rounded-xl font-medium hover:bg-green-700">
+                                Claim Your Prize
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    prizeHtml = `
+                        <div class="bg-blue-100 p-4 rounded-xl mb-4">
+                            <p class="text-blue-800 font-semibold">✅ Prize claimed! $${userEntry.prize} added to your balance.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            content.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-bold">${c.name}</h3>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
+                <p class="text-gray-600 mb-4">${c.description || 'No description'}</p>
+
+                ${prizeHtml}
+
+                <div class="bg-blue-50 p-4 rounded-xl mb-4">
+                    <div class="flex justify-between mb-2">
+                        <span>Prize Pool:</span>
+                        <span class="font-bold text-xl">$${c.prize_pool}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Entry Fee:</span>
+                        <span>${c.entry_fee > 0 ? '$' + c.entry_fee : 'Free'}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
+                    <div class="bg-gray-50 p-3 rounded">
+                        <span class="text-gray-500">Start:</span>
+                        <div class="font-bold">${new Date(c.start_time * 1000).toLocaleString()}</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                        <span class="text-gray-500">End:</span>
+                        <div class="font-bold">${new Date(c.end_time * 1000).toLocaleString()}</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                        <span class="text-gray-500">Min Trades:</span>
+                        <div class="font-bold">${c.min_trades}</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded">
+                        <span class="text-gray-500">Participants:</span>
+                        <div class="font-bold">${c.participantCount || 0}/${c.max_participants}</div>
+                    </div>
+                </div>
+
+                ${prizesHtml}
+
+                <div class="mb-6">
+                    ${leaderboardHtml}
+                </div>
+
+                ${!userEntry && isLive ? `
+                    <button onclick="joinCompetition(${c.id})" 
+                            class="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700">
+                        Join Competition ${c.entry_fee > 0 ? '($' + c.entry_fee + ')' : ''}
+                    </button>
+                ` : ''}
+
+                ${userEntry && isLive ? `
+                    <a href="/trading-v2" class="block w-full bg-blue-600 text-white text-center py-3 rounded-xl font-semibold hover:bg-blue-700">
+                        Start Trading
+                    </a>
+                ` : ''}
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        async function joinCompetition(id) {
+            try {
+                const res = await fetch(`/api/competitions/${id}/join`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('✅ Successfully joined competition!');
+                    closeModal();
+                    loadCompetitions('live');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to join competition');
+            }
+        }
+
+        function claimPrize(competitionId, amount) {
+            currentPrize = { competitionId, amount };
+            document.getElementById('claimDetails').innerHTML = `
+                <p class="text-center text-2xl font-bold text-green-600 mb-2">$${amount}</p>
+                <p class="text-center text-gray-600">Choose which token to receive your prize in:</p>
+            `;
+            document.getElementById('claimModal').classList.remove('hidden');
+        }
+
+        async function confirmClaim() {
+            const token = document.getElementById('claimToken').value;
+            
+            try {
+                const res = await fetch('/api/competitions/claim-prize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        competitionId: currentPrize.competitionId,
+                        token: token
+                    })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ Prize claimed! $${currentPrize.amount} ${token} added to your balance.`);
+                    closeClaimModal();
+                    closeModal();
+                    loadCompetitions('ended');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to claim prize');
+            }
+        }
+
+        async function loadMyStats() {
+            showTab('stats');
+            
+            try {
+                const res = await fetch('/api/competitions/user/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    displayMyStats(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function displayMyStats(stats) {
+            document.getElementById('totalCompetitions').textContent = stats.competitions?.length || 0;
+            document.getElementById('bestRank').textContent = stats.bestRank ? '#' + stats.bestRank : '-';
+            document.getElementById('totalPrizes').textContent = '$' + (stats.totalPrizes || 0).toFixed(2);
+            document.getElementById('winRate').textContent = (stats.winRate || 0).toFixed(1) + '%';
+
+            const container = document.getElementById('myCompetitions');
+            
+            if (!stats.competitions || stats.competitions.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-4">No competition history</div>';
+                return;
+            }
+
+            let html = '';
+            stats.competitions.slice(0, 10).forEach(c => {
+                const date = new Date(c.end_time * 1000).toLocaleDateString();
+                const rankColor = c.rank === 1 ? 'text-yellow-600' : c.rank === 2 ? 'text-gray-500' : c.rank === 3 ? 'text-orange-600' : '';
+                const prizeClaimed = c.claimed ? 'text-green-600' : 'text-yellow-600';
+                
+                html += `
+                    <div class="bg-gray-50 p-3 rounded-xl">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="font-medium">${c.name}</span>
+                                <p class="text-xs text-gray-500">${date}</p>
+                            </div>
+                            <div class="text-right">
+                                ${c.rank ? `<span class="font-bold ${rankColor}">#${c.rank}</span>` : '-'}
+                                ${c.prize > 0 ? `<span class="text-green-600 font-bold ml-2">+$${c.prize}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Return: <span class="${c.current_return >= 0 ? 'text-green-600' : 'text-red-600'}">${c.current_return >= 0 ? '+' : ''}${c.current_return.toFixed(2)}%</span></span>
+                            <span>Trades: ${c.trades_count || 0}</span>
+                            ${c.prize > 0 ? `<span class="${prizeClaimed}">${c.claimed ? '✓ Claimed' : '⏳ Pending'}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function getUserId() {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.id;
+            } catch {
+                return null;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('competitionModal').classList.add('hidden');
+        }
+
+        function closeClaimModal() {
+            document.getElementById('claimModal').classList.add('hidden');
+            currentPrize = null;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+
+        // Load live competitions by default
+        loadCompetitions('live');
+    </script>
+</body>
+</html>

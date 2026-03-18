@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Admin Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-blue-600">Admin Panel</h1>
+                <p class="text-gray-600 mt-2">Secure administrator access</p>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="email"
+                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password"
+                           class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                           required>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                    Login to Admin Panel
+                </button>
+            </form>
+
+            <div id="errorMessage" class="mt-4 text-red-600 text-center hidden p-3 bg-red-50 rounded-lg"></div>
+            
+            <div class="mt-6 text-center text-sm text-gray-500">
+                <a href="/" class="text-blue-600 hover:underline">← Back to main site</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+            
+            errorDiv.classList.add('hidden');
+            
+            try {
+                console.log('Attempting login with:', email);
+                
+                const loginRes = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const loginData = await loginRes.json();
+                console.log('Login response:', loginData);
+                
+                if (!loginData.success) {
+                    errorDiv.textContent = loginData.error || 'Login failed';
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+                
+                // Check if user is admin
+                const profileRes = await fetch('/api/auth/profile', {
+                    headers: { 'Authorization': `Bearer ${loginData.token}` }
+                });
+                
+                const profileData = await profileRes.json();
+                console.log('Profile response:', profileData);
+                
+                // FIXED: Check for boolean true instead of 1
+                if (profileData.success && profileData.user && profileData.user.is_admin === true) {
+                    localStorage.setItem('adminToken', loginData.token);
+                    console.log('Admin token saved, redirecting...');
+                    window.location.href = '/admin';
+                } else {
+                    errorDiv.textContent = 'This account does not have administrator privileges';
+                    errorDiv.classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                errorDiv.textContent = 'Login failed. Please try again.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

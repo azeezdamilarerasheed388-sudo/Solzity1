@@ -1,0 +1,225 @@
+const cron = require('node-cron');
+const { getDb } = require('../../config/database');
+const { v4: uuidv4 } = require('uuid');
+const priceOracle = require('./price-oracle');
+
+class SwapFeeService {
+    constructor() {
+        this.swapFee = 5.00;
+        this.isRunning = false;
+        this.contractSizes = {
+            'BTC/USDT': 1,
+            'ETH/USDT': 20,
+            'ETC/USDT': 1000,
+            'SOL/USDT': 100
+        };
+    }
+
+    start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+
+        // Run at 4:00 PM Nigeria time (WAT) every day
+        cron.schedule('0 15 * * *', () => {
+            this.applySwapFees();
+        }, {
+            timezone: "Africa/Lagos"
+        });
+
+        console.log('⏰ Swap Fee Service started - runs daily at 4:00 PM Nigeria time');
+        console.log('💰 Fixed $5 fee for users with open positions');
+        console.log('⚠️  Will automatically close positions if balance is insufficient');
+    }
+
+    async applySwapFees() {
+        console.log('💰 Applying daily $5 swap fees...');
+        const db = await getDb();
+
+        try {
+            await db.runAsync('BEGIN TRANSACTION');
+
+            // Get all users with open positions
+            const usersWithPositions = await db.allAsync(`
+                SELECT DISTINCT user_id 
+                FROM trading_v2_positions 
+                WHERE status = 'OPEN'
+            `);
+
+            let totalFees = 0;
+            let totalPositionsClosed = 0;
+
+            for (const user of usersWithPositions) {
+                const result = await this.applyUserSwapFee(db, user.user_id);
+                totalFees += result.feeCollected || 0;
+                totalPositionsClosed += result.positionsClosed || 0;
+            }
+
+            await db.runAsync('COMMIT');
+            
+            console.log(`✅ Swap fees applied: $${totalFees.toFixed(2)} collected`);
+            console.log(`📊 Positions closed to cover fees: ${totalPositionsClosed}`);
+
+        } catch (error) {
+            await db.runAsync('ROLLBACK');
+            console.error('Swap fee error:', error);
+        }
+    }
+
+    async applyUserSwapFee(db, userId) {
+        let result = {
+            feeCollected: 0,
+            positionsClosed: 0
+        };
+
+        // Get user's trading balance
+        const tradingBalance = await db.getAsync(
+            'SELECT usdc_balance FROM trading_v2_balances WHERE user_id = ?',
+            [userId]
+        );
+
+        let currentBalance = tradingBalance?.usdc_balance || 0;
+
+        // If user has enough balance, just deduct the fee
+        if (currentBalance >= this.swapFee) {
+            await db.runAsync(
+                'UPDATE trading_v2_balances SET usdc_balance = usdc_balance - ? WHERE user_id = ?',
+                [this.swapFee, userId]
+            );
+
+            await this.recordFee(db, userId, this.swapFee);
+            
+            console.log(`   User ${userId}: Charged $${this.swapFee.toFixed(2)} swap fee`);
+            
+            result.feeCollected = this.swapFee;
+            return result;
+        }
+
+        // Not enough balance - need to close positions
+        console.log(`   ⚠️ User ${userId}: Insufficient balance ($${currentBalance}). Need $${this.swapFee}`);
+        console.log(`   Closing positions to cover fee...`);
+
+        // Get all open positions for this user, sorted by smallest first
+        const positions = await db.allAsync(`
+            SELECT * FROM trading_v2_positions 
+            WHERE user_id = ? AND status = 'OPEN'
+            ORDER BY margin ASC
+        `, [userId]);
+
+        let remainingFee = this.swapFee - currentBalance;
+        let totalFromPositions = 0;
+
+        for (const position of positions) {
+            if (remainingFee <= 0) break;
+
+            // Close this position and add margin to balance
+            const closedAmount = await this.closePosition(db, position);
+            totalFromPositions += closedAmount;
+            result.positionsClosed++;
+
+            // Update remaining fee
+            remainingFee -= closedAmount;
+            
+            console.log(`      Closed position ${position.id}: +$${closedAmount.toFixed(2)}`);
+        }
+
+        // Calculate new balance after closing positions
+        const newBalance = currentBalance + totalFromPositions;
+        
+        if (newBalance >= this.swapFee) {
+            // Deduct the fee
+            await db.runAsync(
+                'UPDATE trading_v2_balances SET usdc_balance = usdc_balance - ? WHERE user_id = ?',
+                [this.swapFee, userId]
+            );
+
+            await this.recordFee(db, userId, this.swapFee);
+            
+            console.log(`   User ${userId}: Charged $${this.swapFee.toFixed(2)} swap fee`);
+            console.log(`      Closed ${result.positionsClosed} positions to cover fee`);
+            
+            result.feeCollected = this.swapFee;
+        } else {
+            // Still can't afford fee - take all remaining balance
+            const finalBalance = await db.getAsync(
+                'SELECT usdc_balance FROM trading_v2_balances WHERE user_id = ?',
+                [userId]
+            );
+
+            if (finalBalance.usdc_balance > 0) {
+                await db.runAsync(
+                    'UPDATE trading_v2_balances SET usdc_balance = 0 WHERE user_id = ?',
+                    [userId]
+                );
+
+                await this.recordFee(db, userId, finalBalance.usdc_balance);
+                
+                console.log(`   User ${userId}: Charged $${finalBalance.usdc_balance.toFixed(2)} (partial fee)`);
+                console.log(`      Closed ${result.positionsClosed} positions`);
+                
+                result.feeCollected = finalBalance.usdc_balance;
+            } else {
+                console.log(`   User ${userId}: No balance to charge. Fee unpaid: $${this.swapFee}`);
+            }
+        }
+
+        return result;
+    }
+
+    async closePosition(db, position) {
+        const currentPrice = priceOracle.getPrice(position.asset, 'mid') || position.entry_price;
+        
+        // Calculate P&L
+        let priceDiff = currentPrice - position.entry_price;
+        if (position.side === 'SELL') {
+            priceDiff = -priceDiff;
+        }
+        
+        const contractSize = this.contractSizes[position.asset] || 100;
+        const pnl = priceDiff * position.volume * contractSize;
+        
+        // Return margin + profit (or minus loss)
+        const returnAmount = position.margin + (pnl > 0 ? pnl : 0);
+        
+        // Update position as closed
+        await db.runAsync(
+            `UPDATE trading_v2_positions 
+             SET status = 'CLOSED', 
+                 pnl = ?,
+                 close_price = ?,
+                 close_reason = 'Swap Fee',
+                 closed_at = ? 
+             WHERE id = ?`,
+            [pnl, currentPrice, Math.floor(Date.now() / 1000), position.id]
+        );
+
+        // Add funds back to trading balance
+        if (returnAmount > 0) {
+            await db.runAsync(
+                'UPDATE trading_v2_balances SET usdc_balance = usdc_balance + ? WHERE user_id = ?',
+                [returnAmount, position.user_id]
+            );
+        }
+
+        return returnAmount;
+    }
+
+    async recordFee(db, userId, amount) {
+        await db.runAsync(
+            `INSERT INTO trading_v2_swap_fees (id, user_id, amount, created_at)
+             VALUES (?, ?, ?, ?)`,
+            [uuidv4(), userId, amount, Math.floor(Date.now() / 1000)]
+        );
+    }
+
+    async getUserSwapFees(userId, days = 30) {
+        const db = await getDb();
+        const since = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+        
+        return await db.allAsync(
+            'SELECT * FROM trading_v2_swap_fees WHERE user_id = ? AND created_at > ? ORDER BY created_at DESC',
+            [userId, since]
+        );
+    }
+}
+
+module.exports = new SwapFeeService();

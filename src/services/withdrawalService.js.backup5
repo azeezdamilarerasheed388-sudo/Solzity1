@@ -1,0 +1,388 @@
+const { 
+    Connection, 
+    PublicKey, 
+    Keypair, 
+    Transaction, 
+    SystemProgram, 
+    sendAndConfirmTransaction,
+    LAMPORTS_PER_SOL
+} = require('@solana/web3.js');
+const { 
+    getAssociatedTokenAddress, 
+    createTransferInstruction, 
+    createAssociatedTokenAccountInstruction,
+    getAccount,
+    TOKEN_PROGRAM_ID
+} = require('@solana/spl-token');
+const fs = require('fs');
+const path = require('path');
+const bip39 = require('bip39');
+const { derivePath } = require('ed25519-hd-key');
+const bs58 = require('bs58');
+const { db } = require('../config/database-supabase');
+const twofaService = require('./twofaService');
+
+class WithdrawalService {
+    constructor() {
+        this.connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com', 'confirmed');
+        
+        this.masterWallet = this.loadMasterWallet();
+        
+        this.MINTS = {
+            USDC: new PublicKey(process.env.USDC_MINT || 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'),
+            USDT: new PublicKey(process.env.USDT_MINT || 'Es9vMFrzaDCmFsc1Khm6Jf3N6St6H1VxmKkFZ7W8XQZ')
+        };
+        
+        console.log(`🚀 Withdrawal Service Ready`);
+        console.log(`   Master Wallet: ${this.masterWallet.publicKey.toBase58()}`);
+    }
+
+    loadMasterWallet() {
+        try {
+            const mnemonicPath = process.env.MASTER_MNEMONIC_PATH || './keys/master-mnemonic.txt';
+            const fullPath = path.resolve(mnemonicPath);
+            
+            if (!fs.existsSync(fullPath)) {
+                throw new Error(`Master mnemonic file not found at ${fullPath}`);
+            }
+            
+            const mnemonic = fs.readFileSync(fullPath, 'utf8').trim();
+            const seed = bip39.mnemonicToSeedSync(mnemonic);
+            const derivationPath = "m/44'/501'/0'/0'";
+            const { key } = derivePath(derivationPath, seed.toString('hex'));
+            const keypair = Keypair.fromSeed(key.slice(0, 32));
+            
+            return keypair;
+        } catch (error) {
+            console.error('❌ Failed to load master wallet:', error.message);
+            throw error;
+        }
+    }
+
+    async getMasterBalance(token) {
+        try {
+            if (token === 'SOL') {
+                const balance = await this.connection.getBalance(this.masterWallet.publicKey);
+                return balance / LAMPORTS_PER_SOL;
+            } else {
+                const mint = this.MINTS[token];
+                const ata = await getAssociatedTokenAddress(mint, this.masterWallet.publicKey);
+                try {
+                    const account = await this.connection.getTokenAccountBalance(ata);
+                    return account.value.uiAmount;
+                } catch (e) {
+                    return 0;
+                }
+            }
+        } catch (error) {
+            console.error('Error getting master balance:', error);
+            return 0;
+        }
+    }
+
+    async getFees() {
+        console.log('📊 WithdrawalService: Fetching fees from database');
+        const settings = await db.getAsync('SELECT withdrawal_fee_sol, withdrawal_fee_usdc, withdrawal_fee_usdt FROM admin_settings WHERE id = 1');
+        console.log('📊 Database settings:', settings);
+        
+        const fees = {
+            SOL: settings?.withdrawal_fee_sol !== undefined ? settings.withdrawal_fee_sol : 0.01,
+            USDC: settings?.withdrawal_fee_usdc !== undefined ? settings.withdrawal_fee_usdc : 3.0,
+            USDT: settings?.withdrawal_fee_usdt !== undefined ? settings.withdrawal_fee_usdt : 3.0
+        };
+        console.log('📊 Returned fees:', fees);
+        return fees;
+    }
+
+    async getLimits() {
+        const settings = await db.getAsync('SELECT * FROM admin_settings WHERE id = 1');
+        return {
+            SOL: {
+                min: settings?.min_withdrawal_sol || 0.01,
+                max: settings?.max_withdrawal_sol || 1000,
+                autoApprove: settings?.auto_approve_sol || 10
+            },
+            USDC: {
+                min: settings?.min_withdrawal_usdc || 1.0,
+                max: settings?.max_withdrawal_usdc || 100000,
+                autoApprove: settings?.auto_approve_usdc || 1000
+            },
+            USDT: {
+                min: settings?.min_withdrawal_usdt || 1.0,
+                max: settings?.max_withdrawal_usdt || 100000,
+                autoApprove: settings?.auto_approve_usdt || 1000
+            }
+        };
+    }
+
+    async requestWithdrawal(userId, token, amount, destinationAddress, twoFACode) {
+        const now = Math.floor(Date.now() / 1000);
+        
+        try {
+            const is2FAEnabled = await twofaService.isEnabled(userId);
+            if (is2FAEnabled) {
+                if (!twoFACode || twoFACode.length !== 6) {
+                    throw new Error('Valid 6-digit 2FA code required');
+                }
+                
+                const verified = await twofaService.verifyToken(userId, twoFACode);
+                if (!verified) {
+                    throw new Error('Invalid 2FA code');
+                }
+            }
+
+            const fees = await this.getFees();
+            const limits = await this.getLimits();
+            
+            const fee = fees[token];
+            const minLimit = limits[token].min;
+            const maxLimit = limits[token].max;
+            const autoApproveThreshold = limits[token].autoApprove;
+            
+            if (amount < minLimit) {
+                throw new Error(`Minimum withdrawal for ${token} is ${minLimit}`);
+            }
+            if (amount > maxLimit) {
+                throw new Error(`Maximum withdrawal for ${token} is ${maxLimit}`);
+            }
+            
+            const netAmount = amount - fee;
+            if (netAmount <= 0) {
+                throw new Error(`Amount must be greater than fee (${fee} ${token})`);
+            }
+
+            const balanceCol = `${token.toLowerCase()}_balance`;
+            const userWallet = await db.getAsync(
+                `SELECT ${balanceCol} FROM wallets WHERE user_id = $1`,
+                [userId]
+            );
+
+            if (!userWallet || userWallet[balanceCol] < amount) {
+                throw new Error(`Insufficient ${token} balance`);
+            }
+
+            const masterBalance = await this.getMasterBalance(token);
+
+            let status;
+            let needsAdminApproval = false;
+            let statusMessage = '';
+
+            if (masterBalance < amount) {
+                status = 'pending';
+                statusMessage = 'Withdrawal pending - waiting for funds';
+            } else if (amount > autoApproveThreshold) {
+                status = 'pending';
+                needsAdminApproval = true;
+                statusMessage = 'Withdrawal requires admin approval';
+            } else {
+                status = 'approved';
+                statusMessage = 'Withdrawal approved';
+            }
+
+            // Deduct from user balance
+            await db.runAsync(
+                `UPDATE wallets SET ${balanceCol} = ${balanceCol} - $1 WHERE user_id = $2`,
+                [amount, userId]
+            );
+
+            // Insert withdrawal record
+            const result = await db.runAsync(
+                `INSERT INTO withdrawals (
+                    user_id, token, amount, fee, net_amount, to_address, 
+                    status, twofa_verified, created_at, admin_approved
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+                [
+                    userId, token, amount, fee, netAmount, destinationAddress, 
+                    status, is2FAEnabled, now, !needsAdminApproval
+                ]
+            );
+
+            const withdrawalId = result.lastID;
+            let txHash = null;
+            let finalStatus = status;
+
+            // If approved and master has funds, process immediately
+            if (status === 'approved' && masterBalance >= amount) {
+                try {
+                    console.log(`⚙️ Processing approved withdrawal ${withdrawalId}...`);
+                    txHash = await this.processWithdrawal(withdrawalId);
+                    
+                    // Update status to completed
+                    await db.runAsync(
+                        `UPDATE withdrawals SET status = $1, tx_signature = $2 WHERE id = $3`,
+                        ['completed', txHash, withdrawalId]
+                    );
+                    finalStatus = 'completed';
+                    console.log(`✅ Withdrawal ${withdrawalId} completed with tx: ${txHash}`);
+                } catch (error) {
+                    console.error('❌ Error processing withdrawal:', error);
+                    await db.runAsync(
+                        `UPDATE withdrawals SET status = $1, admin_approved = $2 WHERE id = $3`,
+                        ['pending', false, withdrawalId]
+                    );
+                    finalStatus = 'pending';
+                }
+            }
+            
+            // Get the final withdrawal record
+            const finalWithdrawal = await db.getAsync(
+                'SELECT status, tx_signature FROM withdrawals WHERE id = $1',
+                [withdrawalId]
+            );
+            
+            return {
+                withdrawalId,
+                amount,
+                fee,
+                netAmount,
+                status: finalWithdrawal.status,
+                txHash: finalWithdrawal.tx_signature,
+                message: statusMessage
+            };
+
+        } catch (error) {
+            console.error('❌ Withdrawal request failed:', error);
+            throw error;
+        }
+    }
+
+    async processWithdrawal(withdrawalId, adminId = null) {
+        try {
+            // Get withdrawal details
+            const withdrawal = await db.getAsync(
+                'SELECT * FROM withdrawals WHERE id = $1',
+                [withdrawalId]
+            );
+            
+            if (!withdrawal) {
+                throw new Error('Withdrawal not found');
+            }
+
+            // Don't process if already completed
+            if (withdrawal.status === 'completed') {
+                console.log(`✅ Withdrawal ${withdrawalId} already completed`);
+                return withdrawal.tx_signature;
+            }
+
+            console.log(`⚙️ Processing withdrawal ${withdrawalId}: ${withdrawal.amount} ${withdrawal.token}`);
+
+            const masterBalance = await this.getMasterBalance(withdrawal.token);
+            if (masterBalance < withdrawal.net_amount) {
+                throw new Error(`Insufficient master balance: Have ${masterBalance}, Need ${withdrawal.net_amount}`);
+            }
+
+            const destPubkey = new PublicKey(withdrawal.to_address);
+            
+            let txHash;
+            if (withdrawal.token === 'SOL') {
+                txHash = await this.transferSOL(destPubkey, withdrawal.net_amount);
+            } else {
+                txHash = await this.transferToken(destPubkey, withdrawal.net_amount, withdrawal.token);
+            }
+
+            const now = Math.floor(Date.now() / 1000);
+            
+            // Update withdrawal as completed
+            await db.runAsync(
+                `UPDATE withdrawals 
+                 SET status = $1, tx_signature = $2, processed_at = $3, approved_by = $4
+                 WHERE id = $5`,
+                ['completed', txHash, now, adminId || 'auto', withdrawalId]
+            );
+
+            console.log(`✅ Withdrawal ${withdrawalId} processed successfully: ${txHash}`);
+            return txHash;
+
+        } catch (error) {
+            console.error(`❌ Error processing withdrawal ${withdrawalId}:`, error);
+            
+            // Update status to failed
+            await db.runAsync(
+                `UPDATE withdrawals SET status = $1 WHERE id = $2`,
+                ['failed', withdrawalId]
+            );
+            throw error;
+        }
+    }
+
+    async transferSOL(toPubkey, amount) {
+        const transaction = new Transaction().add(
+            SystemProgram.transfer({
+                fromPubkey: this.masterWallet.publicKey,
+                toPubkey,
+                lamports: amount * LAMPORTS_PER_SOL,
+            })
+        );
+        return await sendAndConfirmTransaction(this.connection, transaction, [this.masterWallet]);
+    }
+
+    async transferToken(toPubkey, amount, symbol) {
+        const mint = this.MINTS[symbol];
+        const decimals = 6;
+        const adjustedAmount = Math.floor(amount * Math.pow(10, decimals));
+
+        const fromAta = await getAssociatedTokenAddress(mint, this.masterWallet.publicKey);
+        const toAta = await getAssociatedTokenAddress(mint, toPubkey);
+
+        const transaction = new Transaction();
+
+        try {
+            await getAccount(this.connection, toAta);
+        } catch (e) {
+            transaction.add(
+                createAssociatedTokenAccountInstruction(
+                    this.masterWallet.publicKey,
+                    toAta,
+                    toPubkey,
+                    mint
+                )
+            );
+        }
+
+        transaction.add(
+            createTransferInstruction(
+                fromAta, 
+                toAta, 
+                this.masterWallet.publicKey, 
+                adjustedAmount,
+                {},
+                TOKEN_PROGRAM_ID
+            )
+        );
+
+        return await sendAndConfirmTransaction(this.connection, transaction, [this.masterWallet]);
+    }
+
+    async getPendingWithdrawals() {
+        return await db.allAsync(
+            `SELECT w.*, u.email, u.username 
+             FROM withdrawals w
+             JOIN users u ON w.user_id = u.id
+             WHERE w.status = $1
+             ORDER BY w.created_at ASC`,
+            ['pending']
+        );
+    }
+
+    async getAllWithdrawals() {
+        return await db.allAsync(
+            `SELECT w.*, u.email, u.username 
+             FROM withdrawals w
+             JOIN users u ON w.user_id = u.id
+             ORDER BY w.created_at DESC
+             LIMIT 100`
+        );
+    }
+
+    async getUserWithdrawals(userId) {
+        return await db.allAsync(
+            `SELECT * FROM withdrawals 
+             WHERE user_id = $1 
+             ORDER BY created_at DESC 
+             LIMIT 50`,
+            [userId]
+        );
+    }
+}
+
+module.exports = new WithdrawalService();

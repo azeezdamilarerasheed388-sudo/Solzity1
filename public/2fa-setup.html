@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold">Two-Factor Authentication</h1>
+                <a href="/dashboard" class="text-blue-600 hover:underline">← Back</a>
+            </div>
+            
+            <!-- Status Card -->
+            <div id="statusCard" class="mb-6 p-4 rounded-lg hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-semibold" id="statusText">Loading...</p>
+                        <p class="text-sm text-gray-600" id="statusDetail"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Setup Section (shown when 2FA is disabled) -->
+            <div id="setupSection" style="display: none;">
+                <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                    <p class="text-blue-800 text-sm">
+                        🔐 Scan this QR code with Google Authenticator or Authy to enable 2FA
+                    </p>
+                </div>
+                
+                <div id="qrcode" class="flex justify-center mb-6"></div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Manual Setup Code</label>
+                    <div class="flex">
+                        <input type="text" id="secretCode" readonly class="flex-1 p-2 bg-gray-50 border rounded-l font-mono text-sm">
+                        <button onclick="copySecret()" class="bg-gray-200 px-3 rounded-r hover:bg-gray-300">Copy</button>
+                    </div>
+                </div>
+                
+                <p class="text-gray-600 mb-2">
+                    Enter the 6-digit code from your authenticator app
+                </p>
+                <div class="flex space-x-2 mb-4">
+                    <input type="text" id="token" maxlength="6" class="flex-1 p-3 border rounded text-center text-lg" placeholder="000000">
+                    <button onclick="verify2FA()" class="bg-blue-600 text-white px-6 py-3 rounded hover:bg-blue-700">
+                        Verify
+                    </button>
+                </div>
+            </div>
+
+            <!-- Disable Section (shown when 2FA is enabled) -->
+            <div id="disableSection" style="display: none;">
+                <div class="bg-green-50 p-4 rounded-lg mb-6">
+                    <p class="text-green-800 text-sm">
+                        ✅ Two-factor authentication is currently <span class="font-bold">ENABLED</span>
+                    </p>
+                </div>
+                
+                <p class="text-gray-600 mb-2">
+                    To disable 2FA, enter your current 6-digit code
+                </p>
+                <div class="flex space-x-2 mb-4">
+                    <input type="text" id="disableToken" maxlength="6" class="flex-1 p-3 border rounded text-center text-lg" placeholder="000000">
+                    <button onclick="disable2FA()" class="bg-red-600 text-white px-6 py-3 rounded hover:bg-red-700">
+                        Disable
+                    </button>
+                </div>
+            </div>
+
+            <!-- Success Message -->
+            <div id="successMessage" class="hidden bg-green-100 text-green-700 p-4 rounded-lg mb-4 text-center"></div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden bg-red-100 text-red-700 p-4 rounded-lg mb-4 text-center"></div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        let secret = '';
+
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/2fa/status', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    if (data.enabled) {
+                        document.getElementById('setupSection').style.display = 'none';
+                        document.getElementById('disableSection').style.display = 'block';
+                        document.getElementById('statusText').textContent = '✅ 2FA is ENABLED';
+                        document.getElementById('statusDetail').textContent = 'Your account is protected with two-factor authentication';
+                        document.getElementById('statusCard').classList.remove('hidden');
+                        document.getElementById('statusCard').classList.add('bg-green-50');
+                    } else {
+                        document.getElementById('disableSection').style.display = 'none';
+                        document.getElementById('setupSection').style.display = 'block';
+                        document.getElementById('statusText').textContent = '⚠️ 2FA is DISABLED';
+                        document.getElementById('statusDetail').textContent = 'Enable 2FA to add extra security to your account';
+                        document.getElementById('statusCard').classList.remove('hidden');
+                        document.getElementById('statusCard').classList.add('bg-yellow-50');
+                        setup2FA();
+                    }
+                }
+            } catch (error) {
+                showError('Failed to check 2FA status');
+            }
+        }
+
+        async function setup2FA() {
+            try {
+                const res = await fetch('/api/2fa/setup', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('qrcode').innerHTML = `<img src="${data.qrCode}" alt="QR Code" class="mx-auto">`;
+                    document.getElementById('secretCode').value = data.secret;
+                    secret = data.secret;
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('Failed to setup 2FA');
+            }
+        }
+
+        async function verify2FA() {
+            const tokenCode = document.getElementById('token').value;
+            
+            if (tokenCode.length !== 6) {
+                showError('Please enter a valid 6-digit code');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/2fa/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ token: tokenCode })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showSuccess('✅ 2FA enabled successfully!');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showError('Invalid verification code. Please try again.');
+                }
+            } catch (error) {
+                showError('Verification failed');
+            }
+        }
+
+        async function disable2FA() {
+            const tokenCode = document.getElementById('disableToken').value;
+            
+            if (tokenCode.length !== 6) {
+                showError('Please enter a valid 6-digit code');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/2fa/disable', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ token: tokenCode })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showSuccess('✅ 2FA disabled successfully!');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showError('Invalid verification code. Please try again.');
+                }
+            } catch (error) {
+                showError('Failed to disable 2FA');
+            }
+        }
+
+        function copySecret() {
+            const secret = document.getElementById('secretCode').value;
+            navigator.clipboard.writeText(secret);
+            showSuccess('Secret code copied to clipboard!');
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.classList.remove('hidden');
+            setTimeout(() => {
+                successDiv.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 3000);
+        }
+
+        checkStatus();
+    </script>
+</body>
+</html>

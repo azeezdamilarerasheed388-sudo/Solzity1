@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Admin Panel</h1>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Logout</button>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <a href="/admin/stats" class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg shadow hover:shadow-lg transition text-white">
+                <h2 class="text-xl font-bold mb-2">📊 Stats</h2>
+                <p class="text-purple-100">Platform statistics</p>
+            </a>
+            
+            <a href="/admin/withdrawals" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                <h2 class="text-xl font-bold mb-2">💰 Withdrawals</h2>
+                <p class="text-gray-600">Manage withdrawal requests</p>
+            </a>
+            
+            <a href="/admin/limits" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                <h2 class="text-xl font-bold mb-2">📏 Limits</h2>
+                <p class="text-gray-600">Withdrawal min/max limits</p>
+            </a>
+            
+            <a href="/admin/master-wallet" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                <h2 class="text-xl font-bold mb-2">🏦 Master Wallet</h2>
+                <p class="text-gray-600">On-chain balances & sweep</p>
+            </a>
+            
+            <a href="/admin/transfers" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                <h2 class="text-xl font-bold mb-2">🔄 Transfers</h2>
+                <p class="text-gray-600">Internal transfers & fees</p>
+            </a>
+            
+            <a href="/admin/users" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                <h2 class="text-xl font-bold mb-2">👥 Users</h2>
+                <p class="text-gray-600">Manage users & balances</p>
+            </a>
+
+            <a href="/admin/competitions" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition border-2 border-yellow-200">
+                <h2 class="text-xl font-bold mb-2">🏆 Competitions</h2>
+                <p class="text-gray-600">Create & manage trading competitions</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) window.location.href = '/admin/login';
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+    </script>
+</body>
+</html>

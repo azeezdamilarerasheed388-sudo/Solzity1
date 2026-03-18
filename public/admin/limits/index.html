@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Withdrawal Limits</h1>
+            <div class="space-x-2">
+                <a href="/admin" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Back</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <!-- Current Limits Display -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">📊 Current Withdrawal Limits</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <!-- SOL Card -->
+                <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-3">SOL</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-blue-600">Minimum:</span>
+                            <span class="font-bold" id="currentMinSol">0.01</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-blue-600">Maximum:</span>
+                            <span class="font-bold" id="currentMaxSol">1000</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-blue-600">Auto-approve ≤:</span>
+                            <span class="font-bold" id="currentAutoSol">10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USDC Card -->
+                <div class="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                    <h3 class="text-lg font-semibold text-green-800 mb-3">USDC</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-green-600">Minimum:</span>
+                            <span class="font-bold" id="currentMinUsdc">1.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-green-600">Maximum:</span>
+                            <span class="font-bold" id="currentMaxUsdc">100000</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-green-600">Auto-approve ≤:</span>
+                            <span class="font-bold" id="currentAutoUsdc">1000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USDT Card -->
+                <div class="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+                    <h3 class="text-lg font-semibold text-purple-800 mb-3">USDT</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-purple-600">Minimum:</span>
+                            <span class="font-bold" id="currentMinUsdt">1.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-purple-600">Maximum:</span>
+                            <span class="font-bold" id="currentMaxUsdt">100000</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-purple-600">Auto-approve ≤:</span>
+                            <span class="font-bold" id="currentAutoUsdt">1000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Limits Form -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">✏️ Update Withdrawal Limits</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- SOL Form -->
+                <div class="border rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-blue-600 mb-3">SOL</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Minimum Amount</label>
+                            <input type="number" id="minSol" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Maximum Amount</label>
+                            <input type="number" id="maxSol" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Auto-approve ≤</label>
+                            <input type="number" id="autoSol" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USDC Form -->
+                <div class="border rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-green-600 mb-3">USDC</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Minimum Amount</label>
+                            <input type="number" id="minUsdc" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Maximum Amount</label>
+                            <input type="number" id="maxUsdc" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Auto-approve ≤</label>
+                            <input type="number" id="autoUsdc" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USDT Form -->
+                <div class="border rounded-lg p-4">
+                    <h3 class="text-lg font-semibold text-purple-600 mb-3">USDT</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Minimum Amount</label>
+                            <input type="number" id="minUsdt" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Maximum Amount</label>
+                            <input type="number" id="maxUsdt" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Auto-approve ≤</label>
+                            <input type="number" id="autoUsdt" step="0.01" min="0" class="w-full p-2 border rounded">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+                <button onclick="updateAllLimits()" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 text-lg font-semibold">
+                    Update All Limits
+                </button>
+            </div>
+            <div id="message" class="mt-4 text-center text-sm hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) window.location.href = '/admin/login';
+
+        async function loadLimits() {
+            try {
+                const res = await fetch('/api/withdrawals/limits', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    const limits = data.limits;
+                    
+                    // Update current display
+                    document.getElementById('currentMinSol').textContent = limits.SOL.min;
+                    document.getElementById('currentMaxSol').textContent = limits.SOL.max;
+                    document.getElementById('currentAutoSol').textContent = limits.SOL.autoApprove;
+                    
+                    document.getElementById('currentMinUsdc').textContent = limits.USDC.min;
+                    document.getElementById('currentMaxUsdc').textContent = limits.USDC.max;
+                    document.getElementById('currentAutoUsdc').textContent = limits.USDC.autoApprove;
+                    
+                    document.getElementById('currentMinUsdt').textContent = limits.USDT.min;
+                    document.getElementById('currentMaxUsdt').textContent = limits.USDT.max;
+                    document.getElementById('currentAutoUsdt').textContent = limits.USDT.autoApprove;
+                    
+                    // Fill form fields
+                    document.getElementById('minSol').value = limits.SOL.min;
+                    document.getElementById('maxSol').value = limits.SOL.max;
+                    document.getElementById('autoSol').value = limits.SOL.autoApprove;
+                    
+                    document.getElementById('minUsdc').value = limits.USDC.min;
+                    document.getElementById('maxUsdc').value = limits.USDC.max;
+                    document.getElementById('autoUsdc').value = limits.USDC.autoApprove;
+                    
+                    document.getElementById('minUsdt').value = limits.USDT.min;
+                    document.getElementById('maxUsdt').value = limits.USDT.max;
+                    document.getElementById('autoUsdt').value = limits.USDT.autoApprove;
+                }
+            } catch (error) {
+                console.error('Error loading limits:', error);
+                showMessage('Error loading limits', 'error');
+            }
+        }
+
+        async function updateAllLimits() {
+            const limits = {
+                SOL: {
+                    min: parseFloat(document.getElementById('minSol').value),
+                    max: parseFloat(document.getElementById('maxSol').value),
+                    autoApprove: parseFloat(document.getElementById('autoSol').value)
+                },
+                USDC: {
+                    min: parseFloat(document.getElementById('minUsdc').value),
+                    max: parseFloat(document.getElementById('maxUsdc').value),
+                    autoApprove: parseFloat(document.getElementById('autoUsdc').value)
+                },
+                USDT: {
+                    min: parseFloat(document.getElementById('minUsdt').value),
+                    max: parseFloat(document.getElementById('maxUsdt').value),
+                    autoApprove: parseFloat(document.getElementById('autoUsdt').value)
+                }
+            };
+
+            // Validate
+            for (let token in limits) {
+                if (limits[token].min < 0 || limits[token].max < 0 || limits[token].autoApprove < 0) {
+                    showMessage('Values cannot be negative', 'error');
+                    return;
+                }
+                if (limits[token].min > limits[token].max) {
+                    showMessage(`${token}: Minimum cannot be greater than maximum`, 'error');
+                    return;
+                }
+            }
+
+            try {
+                const res = await fetch('/api/admin/limits/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(limits)
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    showMessage('Limits updated successfully!', 'success');
+                    loadLimits(); // Reload to show updated values
+                } else {
+                    showMessage('Error: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating limits:', error);
+                showMessage('Error updating limits', 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = `mt-4 text-center text-sm p-2 rounded ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            msgDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                msgDiv.classList.add('hidden');
+            }, 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+
+        // Load limits on page load
+        loadLimits();
+    </script>
+</body>
+</html>

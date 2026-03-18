@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex items-center">
+            <a href="/dashboard" class="text-2xl mr-4">←</a>
+            <h1 class="text-xl font-bold text-blue-600">Deposit History</h1>
+        </div>
+    </div>
+
+    <div class="p-4">
+        <div id="depositsList" class="space-y-3">
+            <div class="text-center text-gray-500 py-8">Loading deposits...</div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        async function loadDeposits() {
+            try {
+                const res = await fetch('/api/deposits', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const list = document.getElementById('depositsList');
+                
+                if (!data.deposits || data.deposits.length === 0) {
+                    list.innerHTML = '<div class="text-center text-gray-500 py-8">No deposits yet</div>';
+                    return;
+                }
+
+                let html = '';
+                data.deposits.forEach(deposit => {
+                    const date = new Date(deposit.created_at).toLocaleString();
+                    const colors = {
+                        'SOL': 'blue',
+                        'USDC': 'green',
+                        'USDT': 'purple'
+                    }[deposit.token];
+
+                    html += `
+                        <div class="bg-white rounded-2xl p-4 shadow-sm">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="bg-${colors}-100 text-${colors}-600 px-2 py-1 rounded-lg text-xs font-medium">
+                                        ${deposit.token}
+                                    </span>
+                                    <p class="text-xs text-gray-500 mt-1">${date}</p>
+                                </div>
+                                <p class="text-xl font-bold">${deposit.amount}</p>
+                            </div>
+                            <p class="text-xs text-gray-500 font-mono truncate mt-2">
+                                ${deposit.tx_signature?.substring(0, 30)}...
+                            </p>
+                        </div>
+                    `;
+                });
+
+                list.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading deposits:', error);
+            }
+        }
+
+        loadDeposits();
+    </script>
+</body>
+</html>

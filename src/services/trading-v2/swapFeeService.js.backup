@@ -1,0 +1,96 @@
+const cron = require('node-cron');
+const { getDb } = require('../../config/database');
+const { v4: uuidv4 } = require('uuid');
+
+class SwapFeeService {
+    constructor() {
+        this.swapFee = 5.00;
+        this.isRunning = false;
+    }
+
+    start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+
+        // Run at 4:00 PM Nigeria time (WAT) every day
+        // Nigeria is UTC+1, so 4:00 PM = 15:00 UTC
+        cron.schedule('0 15 * * *', () => {
+            this.applySwapFees();
+        }, {
+            timezone: "Africa/Lagos"
+        });
+
+        console.log('⏰ Swap Fee Service started - runs daily at 4:00 PM Nigeria time');
+        console.log('💰 Fixed $5 fee for users with open positions');
+    }
+
+    async applySwapFees() {
+        console.log('💰 Applying daily $5 swap fees...');
+        const db = await getDb();
+
+        try {
+            await db.runAsync('BEGIN TRANSACTION');
+
+            // Get all users with open positions
+            const usersWithPositions = await db.allAsync(`
+                SELECT DISTINCT user_id 
+                FROM trading_v2_positions 
+                WHERE status = 'OPEN'
+            `);
+
+            let totalFees = 0;
+            for (const user of usersWithPositions) {
+                const feeCollected = await this.applyUserSwapFee(db, user.user_id);
+                totalFees += feeCollected;
+            }
+
+            await db.runAsync('COMMIT');
+            console.log(`✅ Swap fees applied: $${totalFees.toFixed(2)} collected from ${usersWithPositions.length} users`);
+
+        } catch (error) {
+            await db.runAsync('ROLLBACK');
+            console.error('Swap fee error:', error);
+        }
+    }
+
+    async applyUserSwapFee(db, userId) {
+        // Get user's trading balance
+        const tradingBalance = await db.getAsync(
+            'SELECT usdc_balance FROM trading_v2_balances WHERE user_id = ?',
+            [userId]
+        );
+
+        if (!tradingBalance || tradingBalance.usdc_balance < this.swapFee) {
+            console.log(`   User ${userId}: Insufficient balance for swap fee`);
+            return 0;
+        }
+
+        // Deduct fixed $5 fee
+        await db.runAsync(
+            'UPDATE trading_v2_balances SET usdc_balance = usdc_balance - ? WHERE user_id = ?',
+            [this.swapFee, userId]
+        );
+
+        // Record the fee
+        await db.runAsync(
+            `INSERT INTO trading_v2_swap_fees (id, user_id, amount, created_at)
+             VALUES (?, ?, ?, ?)`,
+            [uuidv4(), userId, this.swapFee, Math.floor(Date.now() / 1000)]
+        );
+
+        console.log(`   User ${userId}: Charged $${this.swapFee.toFixed(2)} swap fee`);
+        return this.swapFee;
+    }
+
+    async getUserSwapFees(userId, days = 30) {
+        const db = await getDb();
+        const since = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+        
+        return await db.allAsync(
+            'SELECT * FROM trading_v2_swap_fees WHERE user_id = ? AND created_at > ? ORDER BY created_at DESC',
+            [userId, since]
+        );
+    }
+}
+
+module.exports = new SwapFeeService();

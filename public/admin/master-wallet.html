@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Master Wallet Management</h1>
+            <div class="space-x-2">
+                <a href="/admin" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Admin Panel</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <!-- Master Wallet Summary -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">Master Wallet Balances (On-Chain)</h2>
+            
+            <!-- Address Row -->
+            <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                <p class="text-sm text-blue-600 font-medium">Address</p>
+                <p id="masterAddress" class="font-mono text-sm break-all mt-1">Loading...</p>
+            </div>
+            
+            <!-- Balance Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- SOL Card -->
+                <div class="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-lg font-semibold text-blue-800">SOL</p>
+                        <span class="text-2xl">◎</span>
+                    </div>
+                    <p id="masterSol" class="text-4xl font-bold text-blue-700">0.00</p>
+                </div>
+                
+                <!-- USDC Card -->
+                <div class="bg-green-50 p-6 rounded-lg border-2 border-green-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-lg font-semibold text-green-800">USDC</p>
+                        <span class="text-2xl">$</span>
+                    </div>
+                    <p id="masterUsdc" class="text-4xl font-bold text-green-700">0.00</p>
+                </div>
+                
+                <!-- USDT Card -->
+                <div class="bg-purple-50 p-6 rounded-lg border-2 border-purple-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-lg font-semibold text-purple-800">USDT</p>
+                        <span class="text-2xl">₮</span>
+                    </div>
+                    <p id="masterUsdt" class="text-4xl font-bold text-purple-700">0.00</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cold Wallet Withdrawal -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">💰 Withdraw to Cold Wallet</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Token</label>
+                    <select id="withdrawToken" class="w-full p-2 border rounded">
+                        <option value="SOL">SOL</option>
+                        <option value="USDC">USDC</option>
+                        <option value="USDT">USDT</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Amount</label>
+                    <input type="number" id="withdrawAmount" step="0.01" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Destination Address</label>
+                    <input type="text" id="withdrawAddress" class="w-full p-2 border rounded font-mono">
+                </div>
+                <div class="md:col-span-3">
+                    <button onclick="withdrawToCold()" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                        Withdraw to Cold Wallet
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sweep All Users Button -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">⚡ Sweep All Users</h2>
+                <button onclick="sweepAllUsers()" class="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700">
+                    Sweep All Users
+                </button>
+            </div>
+            <p class="text-sm text-gray-500 mt-2">This will sweep SOL, USDC, and USDT from all users to master wallet</p>
+        </div>
+
+        <!-- User Balances & Sweep -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">👥 User On-Chain Balances</h2>
+                <button onclick="loadUserBalances()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    Refresh
+                </button>
+            </div>
+
+            <!-- User Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full border">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">User ID</th>
+                            <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Address</th>
+                            <th class="px-4 py-3 text-right text-sm font-medium text-gray-600">SOL</th>
+                            <th class="px-4 py-3 text-right text-sm font-medium text-gray-600">USDC</th>
+                            <th class="px-4 py-3 text-right text-sm font-medium text-gray-600">USDT</th>
+                            <th class="px-4 py-3 text-center text-sm font-medium text-gray-600">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody">
+                        <tr><td colspan="6" class="text-center py-8 text-gray-500">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sweep Modal -->
+    <div id="sweepModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-lg font-bold mb-4" id="sweepModalTitle">Sweep Funds</h3>
+            <p id="sweepModalInfo" class="mb-4 text-gray-600"></p>
+            <div id="sweepModalButtons" class="flex flex-col space-y-2">
+                <!-- Buttons will be added here dynamically -->
+            </div>
+            <div class="mt-4">
+                <button onclick="closeSweepModal()" class="w-full bg-gray-200 py-2 rounded hover:bg-gray-300">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            window.location.href = '/admin/login';
+        }
+
+        let currentUserId = null;
+        let users = [];
+
+        async function loadMasterWallet() {
+            try {
+                const res = await fetch('/api/master/balances', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('masterAddress').textContent = data.address || 'N/A';
+                    document.getElementById('masterSol').textContent = (data.sol || 0).toFixed(4);
+                    document.getElementById('masterUsdc').textContent = (data.usdc || 0).toFixed(2);
+                    document.getElementById('masterUsdt').textContent = (data.usdt || 0).toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error loading master wallet:', error);
+            }
+        }
+
+        async function loadUserBalances() {
+            try {
+                const res = await fetch('/api/master/users/balances', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await res.json();
+                
+                const tbody = document.getElementById('usersBody');
+                
+                if (!data.success) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-600">Error loading users</td></tr>';
+                    return;
+                }
+                
+                if (!data.users || data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-500">No users found</td></tr>';
+                    return;
+                }
+
+                users = data.users;
+                let html = '';
+                users.forEach(user => {
+                    if (!user.hasWallet) return;
+                    
+                    html += `
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="px-4 py-3">${user.userId || 'N/A'}</td>
+                            <td class="px-4 py-3 font-mono text-xs">${user.address ? user.address.substring(0, 20) + '...' : 'N/A'}</td>
+                            <td class="px-4 py-3 text-right font-mono font-bold text-blue-600">${(user.sol || 0).toFixed(4)}</td>
+                            <td class="px-4 py-3 text-right font-mono font-bold text-green-600">${(user.usdc || 0).toFixed(2)}</td>
+                            <td class="px-4 py-3 text-right font-mono font-bold text-purple-600">${(user.usdt || 0).toFixed(2)}</td>
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="openSweepModal(${user.userId})" 
+                                        class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">
+                                    Sweep
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html || '<tr><td colspan="6" class="text-center py-8 text-gray-500">No users with wallets found</td></tr>';
+            } catch (error) {
+                console.error('Error loading user balances:', error);
+                document.getElementById('usersBody').innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-600">Error loading users</td></tr>';
+            }
+        }
+
+        function openSweepModal(userId) {
+            currentUserId = userId;
+            const user = users.find(u => u.userId === userId);
+            if (!user) return;
+            
+            document.getElementById('sweepModalTitle').textContent = `Sweep Funds - User ${userId}`;
+            document.getElementById('sweepModalInfo').innerHTML = `
+                Available balances:<br>
+                SOL: ${(user.sol || 0).toFixed(4)}<br>
+                USDC: ${(user.usdc || 0).toFixed(2)}<br>
+                USDT: ${(user.usdt || 0).toFixed(2)}
+            `;
+            
+            const buttonsDiv = document.getElementById('sweepModalButtons');
+            buttonsDiv.innerHTML = `
+                <button onclick="sweepToken('SOL')" class="bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Sweep SOL</button>
+                <button onclick="sweepToken('USDC')" class="bg-green-500 text-white py-2 rounded hover:bg-green-600">Sweep USDC</button>
+                <button onclick="sweepToken('USDT')" class="bg-purple-500 text-white py-2 rounded hover:bg-purple-600">Sweep USDT</button>
+                <button onclick="sweepAllTokens()" class="bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600 mt-2">Sweep All</button>
+            `;
+            
+            document.getElementById('sweepModal').classList.remove('hidden');
+        }
+
+        function closeSweepModal() {
+            document.getElementById('sweepModal').classList.add('hidden');
+            currentUserId = null;
+        }
+
+        async function sweepToken(token) {
+            if (!currentUserId) return;
+
+            try {
+                const endpoint = token === 'SOL' ? 'sol' : token.toLowerCase();
+                const res = await fetch(`/api/master/sweep/${endpoint}/${currentUserId}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ ${data.message}`);
+                    closeSweepModal();
+                    loadMasterWallet();
+                    loadUserBalances();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Sweep failed: ' + error.message);
+            }
+        }
+
+        async function sweepAllTokens() {
+            if (!currentUserId) return;
+
+            try {
+                const res = await fetch(`/api/master/sweep/all/${currentUserId}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    let message = 'Sweep results:\n';
+                    if (data.SOL) message += `✅ SOL: ${data.SOL.amount}\n`;
+                    if (data.USDC) message += `✅ USDC: ${data.USDC.amount}\n`;
+                    if (data.USDT) message += `✅ USDT: ${data.USDT.amount}\n`;
+                    if (data.errors.length) {
+                        message += '\nErrors:\n' + data.errors.join('\n');
+                    }
+                    alert(message);
+                    closeSweepModal();
+                    loadMasterWallet();
+                    loadUserBalances();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Sweep failed: ' + error.message);
+            }
+        }
+
+        async function sweepAllUsers() {
+            if (!confirm('Sweep all tokens from ALL users? This action cannot be undone.')) return;
+
+            try {
+                const res = await fetch('/api/master/sweep/all-users', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ Swept ${data.results.length} users`);
+                    loadMasterWallet();
+                    loadUserBalances();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Sweep failed: ' + error.message);
+            }
+        }
+
+        async function withdrawToCold() {
+            const tokenSel = document.getElementById('withdrawToken').value;
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const address = document.getElementById('withdrawAddress').value;
+
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            if (!address) {
+                alert('Please enter a destination address');
+                return;
+            }
+
+            if (!confirm(`Withdraw ${amount} ${tokenSel} to ${address.substring(0, 20)}...?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/master/withdraw', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ token: tokenSel, amount, address })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert(`✅ Withdrawal successful! Tx: ${data.txHash.substring(0, 20)}...`);
+                    document.getElementById('withdrawAmount').value = '';
+                    document.getElementById('withdrawAddress').value = '';
+                    loadMasterWallet();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Withdrawal failed: ' + error.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+
+        // Load data on page load
+        loadMasterWallet();
+        loadUserBalances();
+        
+        // Refresh every 30 seconds
+        setInterval(() => {
+            loadMasterWallet();
+            loadUserBalances();
+        }, 30000);
+    </script>
+</body>
+</html>

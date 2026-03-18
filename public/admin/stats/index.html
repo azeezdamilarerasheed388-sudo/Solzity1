@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Platform Statistics</h1>
+            <div class="space-x-2">
+                <a href="/admin" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Back</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <!-- Total Users -->
+            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-blue-100 text-sm">Total Users</p>
+                        <p class="text-3xl font-bold" id="totalUsers">0</p>
+                    </div>
+                    <span class="text-4xl">👥</span>
+                </div>
+            </div>
+
+            <!-- Total Deposits -->
+            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-green-100 text-sm">Total Deposits</p>
+                        <p class="text-3xl font-bold" id="totalDeposits">$0</p>
+                    </div>
+                    <span class="text-4xl">📥</span>
+                </div>
+            </div>
+
+            <!-- Total Withdrawals -->
+            <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg shadow-lg p-6 text-white">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-yellow-100 text-sm">Total Withdrawals</p>
+                        <p class="text-3xl font-bold" id="totalWithdrawals">$0</p>
+                    </div>
+                    <span class="text-4xl">📤</span>
+                </div>
+            </div>
+
+            <!-- Open Positions -->
+            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-purple-100 text-sm">Open Positions</p>
+                        <p class="text-3xl font-bold" id="openPositions">0</p>
+                    </div>
+                    <span class="text-4xl">📊</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Revenue Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Withdrawal Fees -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-gray-500 text-sm">Withdrawal Fees</p>
+                <p class="text-3xl font-bold text-blue-600" id="withdrawalFees">$0</p>
+                <p class="text-sm text-gray-400 mt-2">From 5 withdrawals</p>
+            </div>
+
+            <!-- Transfer Fees -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-gray-500 text-sm">Transfer Fees</p>
+                <p class="text-3xl font-bold text-green-600" id="transferFees">$0</p>
+                <p class="text-sm text-gray-400 mt-2">From 1 transfer</p>
+            </div>
+
+            <!-- Trading Fees -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <p class="text-gray-500 text-sm">Trading Fees</p>
+                <p class="text-3xl font-bold text-purple-600" id="tradingFees">$0</p>
+                <p class="text-sm text-gray-400 mt-2">From 1 closed position</p>
+            </div>
+        </div>
+
+        <!-- Main Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Revenue Breakdown -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">💰 Revenue Breakdown</h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span>Withdrawal Fees:</span>
+                        <span class="font-bold" id="withdrawalDetail">$0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Transfer Fees:</span>
+                        <span class="font-bold" id="transferDetail">$0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Trading Fees:</span>
+                        <span class="font-bold" id="tradingDetail">$0</span>
+                    </div>
+                    <div class="border-t pt-2 flex justify-between font-bold text-lg">
+                        <span>Total Revenue:</span>
+                        <span class="text-green-600" id="totalRevenue">$0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading P&L Breakdown -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">📊 Trading P&L</h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span>Total Profit:</span>
+                        <span class="text-green-600 font-bold" id="totalProfit">$0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Total Loss:</span>
+                        <span class="text-red-600 font-bold" id="totalLoss">$0</span>
+                    </div>
+                    <div class="border-t pt-2 flex justify-between font-bold text-lg">
+                        <span>Net P&L:</span>
+                        <span class="text-blue-600" id="netPnl">$0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Activity -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">📈 Trading Activity</h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span>Trading Transfers:</span>
+                        <span class="font-bold" id="tradingTransfers">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Transfer Volume:</span>
+                        <span class="font-bold" id="tradingVolume">$0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform Summary -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">📋 Platform Summary</h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span>Total Users:</span>
+                        <span class="font-bold" id="totalUsersDetail">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Net Flow (Deposits - Withdrawals):</span>
+                        <span class="font-bold" id="netFlow">$0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="mt-6 bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">⏱️ Recent Activity</h2>
+            <div class="space-y-2 text-sm">
+                <p>• 22 deposits recorded (check deposits table)</p>
+                <p>• 5 withdrawals processed</p>
+                <p>• 1 transfer completed</p>
+                <p>• 1 trading position closed</p>
+                <p>• 3 trading transfers (to/from trading)</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) window.location.href = '/admin/login';
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    const s = data.stats;
+                    
+                    // Update summary cards
+                    document.getElementById('totalUsers').textContent = s.totalUsers;
+                    document.getElementById('totalDeposits').textContent = '$' + s.totalDeposits.toFixed(2);
+                    document.getElementById('totalWithdrawals').textContent = '$' + s.totalWithdrawals.toFixed(2);
+                    document.getElementById('openPositions').textContent = s.openPositions;
+                    
+                    // Update fee cards
+                    document.getElementById('withdrawalFees').textContent = '$' + s.withdrawalFees.toFixed(2);
+                    document.getElementById('transferFees').textContent = '$' + s.transferFees.toFixed(2);
+                    document.getElementById('tradingFees').textContent = '$' + s.tradingFees.toFixed(2);
+                    
+                    // Update details
+                    document.getElementById('withdrawalDetail').textContent = '$' + s.withdrawalFees.toFixed(2);
+                    document.getElementById('transferDetail').textContent = '$' + s.transferFees.toFixed(2);
+                    document.getElementById('tradingDetail').textContent = '$' + s.tradingFees.toFixed(2);
+                    document.getElementById('totalRevenue').textContent = '$' + s.totalRevenue.toFixed(2);
+                    
+                    // Update P&L
+                    document.getElementById('totalProfit').textContent = '$' + s.totalProfit.toFixed(2);
+                    document.getElementById('totalLoss').textContent = '$' + s.totalLoss.toFixed(2);
+                    document.getElementById('netPnl').textContent = '$' + s.netPnl.toFixed(2);
+                    
+                    // Update trading activity
+                    document.getElementById('tradingTransfers').textContent = s.totalTradingTransfers;
+                    document.getElementById('tradingVolume').textContent = '$' + s.tradingTransferVolume.toFixed(2);
+                    
+                    // Update summary
+                    document.getElementById('totalUsersDetail').textContent = s.totalUsers;
+                    
+                    // Calculate net flow
+                    const netFlow = s.totalDeposits - s.totalWithdrawals;
+                    document.getElementById('netFlow').textContent = '$' + netFlow.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+
+        // Load stats on page load
+        loadStats();
+        
+        // Refresh every 30 seconds
+        setInterval(loadStats, 30000);
+    </script>
+</body>
+</html>

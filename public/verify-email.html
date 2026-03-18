@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <div class="text-center mb-6">
+            <span class="text-6xl mb-4 block">✉️</span>
+            <h1 class="text-2xl font-bold text-blue-600">Verify Your Email</h1>
+            <p class="text-gray-600 mt-2">We've sent a 6-digit code to <span id="userEmail" class="font-semibold"></span></p>
+        </div>
+        
+        <div class="bg-blue-50 p-4 rounded-xl mb-6">
+            <p class="text-sm text-blue-800 text-center">
+                Please check your inbox and enter the verification code below.
+                The code expires in 10 minutes.
+            </p>
+        </div>
+        
+        <form id="verifyForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 text-center">
+                    Verification Code
+                </label>
+                <input type="text" id="code" maxlength="6" 
+                       class="w-full text-center text-2xl tracking-widest px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                       placeholder="000000">
+            </div>
+            
+            <button type="submit" id="submitBtn" 
+                    class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700">
+                Verify Email
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
+            <button onclick="resendCode()" class="text-blue-600 font-medium hover:underline">
+                Resend Code
+            </button>
+        </div>
+        
+        <p class="mt-6 text-center text-sm text-gray-500">
+            <a href="/dashboard" class="text-blue-600 hover:underline">Skip for now</a> (you can verify later)
+        </p>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const tempEmail = localStorage.getItem('tempEmail');
+        
+        if (!token) {
+            window.location.href = '/login-enhanced';
+        }
+        
+        document.getElementById('userEmail').textContent = tempEmail || 'your email';
+        
+        document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const code = document.getElementById('code').value;
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (code.length !== 6) {
+                alert('Please enter a valid 6-digit code');
+                return;
+            }
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Verifying...';
+            
+            try {
+                const res = await fetch('/api/enhanced-auth/verify-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ code })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('✅ Email verified successfully!');
+                    localStorage.removeItem('tempEmail');
+                    window.location.href = '/dashboard';
+                } else {
+                    alert('Error: ' + data.error);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Verify Email';
+                }
+            } catch (error) {
+                alert('Verification failed');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Verify Email';
+            }
+        });
+        
+        async function resendCode() {
+            try {
+                const res = await fetch('/api/enhanced-auth/resend-verification', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('✅ New verification code sent!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to resend code');
+            }
+        }
+    </script>
+</body>
+</html>

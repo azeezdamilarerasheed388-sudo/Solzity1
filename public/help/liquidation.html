@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center max-w-4xl mx-auto">
+            <a href="/" class="text-xl font-bold text-blue-600">Solzity</a>
+            <a href="/support" class="text-blue-600">← Back</a>
+        </div>
+    </div>
+
+    <div class="p-4 max-w-3xl mx-auto">
+        <div class="bg-white rounded-2xl p-8 shadow-sm border-l-4 border-red-500">
+            <h1 class="text-3xl font-bold mb-4 text-red-600">⚠️ Liquidation</h1>
+
+            <div class="bg-red-50 p-4 rounded-xl mb-6">
+                <p class="font-bold">Liquidation happens when your margin level falls below 10%</p>
+            </div>
+
+            <h2 class="text-xl font-bold mt-4 mb-2">What is Margin Level?</h2>
+            <p>Margin Level = (Equity / Used Margin) × 100%</p>
+
+            <h2 class="text-xl font-bold mt-6 mb-2">Example</h2>
+            <ul class="list-disc pl-6 space-y-2">
+                <li>You have $100 trading balance</li>
+                <li>You open a position requiring $50 margin</li>
+                <li>If losses reduce equity to $5, margin level = 10%</li>
+                <li>Position is liquidated to prevent negative balance</li>
+            </ul>
+
+            <div class="mt-6 p-4 bg-yellow-50 rounded-xl">
+                <p class="font-semibold">💡 Tip: Always monitor your margin level and use Stop Loss orders!</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

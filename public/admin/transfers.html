@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="bg-white shadow-sm">
+        <div class="px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-blue-600">Transfer Management</h1>
+            <div class="space-x-2">
+                <a href="/admin" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Back</a>
+                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <!-- Fee Settings -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">Transfer Fee Settings</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">SOL Fee (fixed)</label>
+                    <input type="number" id="feeSol" step="0.001" min="0" value="0.001" 
+                           class="w-full p-2 border rounded">
+                    <p class="text-xs text-gray-500">Example: 0.001 SOL</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">USDC Fee (fixed)</label>
+                    <input type="number" id="feeUsdc" step="0.01" min="0" value="0.50" 
+                           class="w-full p-2 border rounded">
+                    <p class="text-xs text-gray-500">Example: 0.50 USDC</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">USDT Fee (fixed)</label>
+                    <input type="number" id="feeUsdt" step="0.01" min="0" value="0.50" 
+                           class="w-full p-2 border rounded">
+                    <p class="text-xs text-gray-500">Example: 0.50 USDT</p>
+                </div>
+            </div>
+            <button onclick="updateFees()" 
+                    class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                Update Fees
+            </button>
+        </div>
+
+        <!-- Transfers List -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">All Transfers</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left">Date</th>
+                            <th class="px-4 py-3 text-left">Sender</th>
+                            <th class="px-4 py-3 text-left">Recipient</th>
+                            <th class="px-4 py-3 text-left">Token</th>
+                            <th class="px-4 py-3 text-right">Amount</th>
+                            <th class="px-4 py-3 text-right">Fee</th>
+                            <th class="px-4 py-3 text-right">Total</th>
+                            <th class="px-4 py-3 text-left">Memo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transfersBody">
+                        <tr><td colspan="8" class="text-center py-8">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        if (!token) window.location.href = '/admin/login';
+
+        async function loadFees() {
+            try {
+                const res = await fetch('/api/transfers/fees');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('feeSol').value = data.fees.SOL || 0.001;
+                    document.getElementById('feeUsdc').value = data.fees.USDC || 0.5;
+                    document.getElementById('feeUsdt').value = data.fees.USDT || 0.5;
+                }
+            } catch (error) {
+                console.error('Error loading fees:', error);
+            }
+        }
+
+        async function updateFees() {
+            const fees = {
+                sol: parseFloat(document.getElementById('feeSol').value),
+                usdc: parseFloat(document.getElementById('feeUsdc').value),
+                usdt: parseFloat(document.getElementById('feeUsdt').value)
+            };
+            
+            if (fees.sol < 0 || fees.usdc < 0 || fees.usdt < 0) {
+                alert('Fees cannot be negative');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/transfers/admin/fees', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(fees)
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ Transfer fees updated`);
+                    loadTransfers();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Failed to update fees');
+            }
+        }
+
+        async function loadTransfers() {
+            try {
+                const res = await fetch('/api/transfers/admin/all', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                const tbody = document.getElementById('transfersBody');
+                
+                if (!data.transfers || data.transfers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">No transfers found</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.transfers.forEach(t => {
+                    const date = new Date(t.created_at * 1000).toLocaleString();
+                    const colors = {
+                        'SOL': 'blue',
+                        'USDC': 'green',
+                        'USDT': 'purple'
+                    }[t.token];
+
+                    html += `
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm">${date}</td>
+                            <td class="px-4 py-3">${t.sender_username || t.sender_email}</td>
+                            <td class="px-4 py-3">${t.recipient_username || t.recipient_email}</td>
+                            <td class="px-4 py-3">
+                                <span class="bg-${colors}-100 text-${colors}-600 px-2 py-1 rounded text-sm">
+                                    ${t.token}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono">${t.amount}</td>
+                            <td class="px-4 py-3 text-right font-mono text-red-600">${t.fee}</td>
+                            <td class="px-4 py-3 text-right font-mono font-bold">${(t.amount + t.fee).toFixed(4)}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">${t.memo || '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                tbody.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading transfers:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/admin/login';
+        }
+
+        loadFees();
+        loadTransfers();
+        setInterval(loadTransfers, 30000);
+    </script>
+</body>
+</html>

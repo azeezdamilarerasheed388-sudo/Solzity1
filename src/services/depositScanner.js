@@ -1,0 +1,318 @@
+const { Connection, PublicKey } = require('@solana/web3.js');
+const { getAssociatedTokenAddress } = require('@solana/spl-token');
+const { db } = require('../config/database-supabase');
+const walletService = require('./walletService');
+
+class DepositScanner {
+    constructor() {
+        this.connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com', {
+            commitment: 'confirmed'
+        });
+        
+        this.MINTS = {
+            USDC: new PublicKey(process.env.USDC_MINT || 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'),
+            USDT: new PublicKey(process.env.USDT_MINT || 'Es9vMFrzaDCmFsc1Khm6Jf3N6St6H1VxmKkFZ7W8XQZ')
+        };
+        
+        this.addressMap = new Map();
+        this.wsSubscriptions = [];
+        this.processedSignatures = new Set(); // Add in-memory cache to prevent duplicates
+        console.log('📡 Deposit Scanner initialized');
+    }
+
+    async loadUsers() {
+        const wallets = await db.allAsync(`SELECT id as wallet_id, user_id, solana_address FROM wallets`);
+        
+        // Clear old subscriptions
+        for (const subId of this.wsSubscriptions) {
+            try { 
+                await this.connection.removeOnLogsListener(subId); 
+            } catch (e) {}
+        }
+        this.wsSubscriptions = [];
+        this.addressMap.clear();
+        
+        for (const wallet of wallets) {
+            const solPubkey = new PublicKey(wallet.solana_address);
+            
+            // Calculate Token Addresses
+            const usdcAta = await getAssociatedTokenAddress(this.MINTS.USDC, solPubkey);
+            const usdtAta = await getAssociatedTokenAddress(this.MINTS.USDT, solPubkey);
+            
+            const usdcAddr = usdcAta.toString();
+            const usdtAddr = usdtAta.toString();
+
+            // Map addresses
+            this.addressMap.set(wallet.solana_address, { 
+                userId: wallet.user_id, 
+                type: 'sol',
+                walletId: wallet.wallet_id 
+            });
+            this.addressMap.set(usdcAddr, { 
+                userId: wallet.user_id, 
+                type: 'usdc',
+                walletId: wallet.wallet_id 
+            });
+            this.addressMap.set(usdtAddr, { 
+                userId: wallet.user_id, 
+                type: 'usdt',
+                walletId: wallet.wallet_id 
+            });
+            
+            // Subscribe to ALL THREE addresses
+            this.setupListener(wallet.solana_address, wallet.user_id, 'SOL');
+            this.setupListener(usdcAddr, wallet.user_id, 'USDC');
+            this.setupListener(usdtAddr, wallet.user_id, 'USDT');
+        }
+        
+        console.log(`📋 Monitoring ${this.addressMap.size} total addresses for ${wallets.length} users`);
+        console.log(`🔌 Subscribed to ${this.wsSubscriptions.length} real-time listeners`);
+    }
+
+    setupListener(address, userId, label) {
+        try {
+            const subscriptionId = this.connection.onLogs(
+                new PublicKey(address), 
+                async (logs) => {
+                    console.log(`🔔 ${label} Activity detected for user ${userId}`);
+                    await this.processSignature(logs.signature);
+                },
+                'confirmed'
+            );
+            this.wsSubscriptions.push(subscriptionId);
+        } catch (error) {
+            console.error(`❌ Error setting up ${label} listener:`, error.message);
+        }
+    }
+
+    async startFallbackPoller() {
+        console.log('⏰ Fallback poller started (every 30 seconds)');
+        setInterval(async () => {
+            await this.pollForMissedDeposits();
+        }, 30 * 1000);
+    }
+
+    async pollForMissedDeposits() {
+        console.log('🔍 Checking for missed deposits...');
+        
+        const monitoredAddresses = Array.from(this.addressMap.entries());
+        
+        for (const [address, info] of monitoredAddresses) {
+            try {
+                const signatures = await this.connection.getSignaturesForAddress(
+                    new PublicKey(address),
+                    { limit: 20 } 
+                );
+                
+                if (signatures.length === 0) continue;
+
+                for (const sigInfo of signatures.reverse()) {
+                    // FIXED: Better duplicate checking
+                    // 1. Check in-memory cache first (fast)
+                    if (this.processedSignatures.has(sigInfo.signature)) {
+                        continue;
+                    }
+                    
+                    // 2. Check database
+                    const exists = await db.getAsync(
+                        'SELECT id FROM deposits WHERE tx_signature = ?',
+                        [sigInfo.signature]
+                    );
+
+                    if (!exists) {
+                        console.log(`📝 Found missed transaction: ${sigInfo.signature.substring(0, 8)}...`);
+                        await this.processSignature(sigInfo.signature);
+                        
+                        // Add to cache to prevent reprocessing
+                        this.processedSignatures.add(sigInfo.signature);
+                        
+                        // Small delay to avoid rate limiting
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } else {
+                        // Add to cache even if already in DB to skip future checks
+                        this.processedSignatures.add(sigInfo.signature);
+                    }
+                }
+            } catch (error) {
+                console.error(`❌ Polling error for ${address.substring(0, 8)}...:`, error.message);
+            }
+        }
+    }
+
+    async processSignature(signature) {
+        try {
+            // FIXED: Check cache first
+            if (this.processedSignatures.has(signature)) {
+                console.log(`⏭️ Already processing: ${signature.substring(0, 8)}...`);
+                return;
+            }
+            
+            // Check DB one more time
+            const exists = await db.getAsync(
+                'SELECT id FROM deposits WHERE tx_signature = ?',
+                [signature]
+            );
+            
+            if (exists) {
+                console.log(`⏭️ Already in database: ${signature.substring(0, 8)}...`);
+                this.processedSignatures.add(signature);
+                return;
+            }
+            
+            console.log(`📝 Processing transaction: ${signature.substring(0, 8)}...`);
+            this.processedSignatures.add(signature); // Add to cache immediately to prevent parallel processing
+            
+            // Small delay for Devnet RPC to catch up
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const tx = await this.connection.getParsedTransaction(signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: 'confirmed'
+            });
+            
+            if (!tx || !tx.meta) {
+                console.log('   ⏭️ No transaction data');
+                return;
+            }
+
+            await this.checkSOLTransfers(tx);
+            await this.checkTokenTransfers(tx);
+            
+        } catch (error) {
+            console.error('Error processing signature:', error.message);
+        }
+    }
+
+    async checkSOLTransfers(tx) {
+        const accountKeys = tx.transaction.message.accountKeys;
+        const preBalances = tx.meta.preBalances || [];
+        const postBalances = tx.meta.postBalances || [];
+
+        for (let i = 0; i < accountKeys.length; i++) {
+            const address = accountKeys[i].pubkey?.toString() || accountKeys[i].toString();
+            const userInfo = this.addressMap.get(address);
+            
+            if (userInfo && userInfo.type === 'sol') {
+                const change = (postBalances[i] - preBalances[i]) / 1e9;
+                if (change > 0.000001) {
+                    console.log(`💰 SOL deposit: +${change} SOL for user ${userInfo.userId}`);
+                    
+                    // FIXED: Check again before recording
+                    const signature = tx.transaction.signatures[0];
+                    const exists = await db.getAsync(
+                        'SELECT id FROM deposits WHERE tx_signature = ?',
+                        [signature]
+                    );
+                    
+                    if (!exists) {
+                        await this.recordDeposit(
+                            userInfo.userId, 'SOL', change, address, 
+                            signature, tx.slot, tx.blockTime
+                        );
+                        await db.runAsync(
+                            `UPDATE wallets SET sol_balance = sol_balance + ? WHERE user_id = ?`, 
+                            [change, userInfo.userId]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    async checkTokenTransfers(tx) {
+        const postBalances = tx.meta.postTokenBalances || [];
+        const preBalances = tx.meta.preTokenBalances || [];
+
+        for (const post of postBalances) {
+            const address = tx.transaction.message.accountKeys[post.accountIndex]?.pubkey?.toString();
+            if (!address) continue;
+            
+            const userInfo = this.addressMap.get(address);
+
+            if (userInfo && (userInfo.type === 'usdc' || userInfo.type === 'usdt')) {
+                const pre = preBalances.find(p => p.accountIndex === post.accountIndex);
+                const preAmount = pre ? BigInt(pre.uiTokenAmount.amount) : BigInt(0);
+                const postAmount = BigInt(post.uiTokenAmount.amount);
+                
+                if (postAmount > preAmount) {
+                    const decimals = post.uiTokenAmount.decimals;
+                    const diff = Number(postAmount - preAmount) / Math.pow(10, decimals);
+                    const tokenSymbol = userInfo.type.toUpperCase();
+
+                    console.log(`💰 ${tokenSymbol} deposit: +${diff} for user ${userInfo.userId}`);
+                    
+                    // FIXED: Check again before recording
+                    const signature = tx.transaction.signatures[0];
+                    const exists = await db.getAsync(
+                        'SELECT id FROM deposits WHERE tx_signature = ?',
+                        [signature]
+                    );
+                    
+                    if (!exists) {
+                        await this.recordDeposit(
+                            userInfo.userId, tokenSymbol, diff, address, 
+                            signature, tx.slot, tx.blockTime
+                        );
+                        
+                        const balanceCol = userInfo.type + '_balance';
+                        await db.runAsync(
+                            `UPDATE wallets SET ${balanceCol} = ${balanceCol} + ? WHERE user_id = ?`, 
+                            [diff, userInfo.userId]
+                        );
+                    } else {
+                        console.log(`   ⏭️ Already recorded: ${signature.substring(0, 8)}...`);
+                    }
+                }
+            }
+        }
+    }
+
+    async recordDeposit(userId, token, amount, address, signature, slot, blockTime) {
+        try {
+            // FIXED: Final check before insert
+            const exists = await db.getAsync(
+                'SELECT id FROM deposits WHERE tx_signature = ?',
+                [signature]
+            );
+            
+            if (exists) {
+                console.log(`   ⏭️ Duplicate skipped: ${signature.substring(0, 8)}...`);
+                return;
+            }
+            
+            await db.runAsync(
+                `INSERT INTO deposits (user_id, token, amount, to_address, tx_signature, slot, block_time, status) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
+                [userId, token, amount, address, signature, slot, blockTime]
+            );
+            
+            console.log(`✅ Recorded: +${amount} ${token} for user ${userId}`);
+            
+            if (global.io) {
+                global.io.to(`user-${userId}`).emit('deposit', { 
+                    token, amount,
+                    txSignature: signature.substring(0, 8) + '...'
+                });
+            }
+        } catch (e) { 
+            if (e.code === '23505') { // PostgreSQL duplicate key error
+                console.log(`   ⏭️ Duplicate ignored: ${signature.substring(0, 8)}...`);
+            } else {
+                console.error('❌ Record error:', e);
+            }
+        }
+    }
+
+    async refreshAfterNewUser() {
+        console.log('🔄 Refreshing scanner after new user...');
+        await this.loadUsers();
+    }
+
+    async start() {
+        await this.loadUsers();
+        await this.startFallbackPoller();
+        console.log('✅ Deposit scanner fully operational');
+    }
+}
+
+module.exports = new DepositScanner();

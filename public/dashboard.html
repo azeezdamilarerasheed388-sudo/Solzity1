@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-bold text-blue-600">Solzity</h1>
+                
+                <!-- Navigation Dropdown Menu - Fixed with JS -->
+                <div class="relative" id="dropdownContainer">
+                    <button onclick="toggleDropdown()" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-xl text-sm font-medium transition" id="menuButton">
+                        <span>☰</span>
+                        <span>Menu</span>
+                        <span class="text-xs" id="dropdownArrow">▼</span>
+                    </button>
+                    
+                    <!-- Dropdown Items - Hidden by default, shown with JS -->
+                    <div class="absolute left-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 hidden border border-gray-100" id="dropdownMenu">
+                        <a href="/trading-v2" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-yellow-600">📊</span>
+                            <span class="text-sm font-medium">Trade</span>
+                        </a>
+                        <a href="/transfer" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-green-600">💸</span>
+                            <span class="text-sm font-medium">Send</span>
+                        </a>
+                        <a href="/withdraw" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-red-600">🏧</span>
+                            <span class="text-sm font-medium">Withdraw</span>
+                        </a>
+                        <a href="/deposits" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-purple-600">📜</span>
+                            <span class="text-sm font-medium">History</span>
+                        </a>
+                        <a href="/referral" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-purple-600">📜</span>
+                            <span class="text-sm font-medium">Referral</span>
+                        </a>
+                        <!-- Competitions - NEW -->
+                        <a href="/competitions" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-orange-600">🏆</span>
+                            <span class="text-sm font-medium">Competitions</span>
+                        </a>
+        
+                        <!-- NGN - NEW -->
+                        <a href="/ngn" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-green-600">🇳🇬</span>
+                            <span class="text-sm font-medium">NGN Wallet</span>
+                        </a>
+                        <!-- Competitions - NEW -->
+                        <a href="/profile" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-orange-600">👩‍🏫</span>
+                            <span class="text-sm font-medium">Competitions</span>
+                        </a>
+        
+                        <!-- NGN - NEW -->
+                        <a href="/support" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-green-600">🎗️</span>
+                            <span class="text-sm font-medium">Support</span>
+                        </a>
+                        <div class="border-t border-gray-100 my-1"></div>
+                        <a href="/2fa-setup" onclick="closeDropdown()" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition">
+                            <span class="text-gray-600">🔐</span>
+                            <span class="text-sm font-medium">2FA Setup</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded-xl text-sm">
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <div class="p-4 pb-20">
+        <h2 class="text-2xl font-bold mb-4">Your Portfolio</h2>
+        
+        <!-- Deposit Address Card -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-5 text-white shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-lg font-semibold">Your Deposit Address</span>
+                <span class="text-2xl">🏦</span>
+            </div>
+            <p class="text-sm opacity-90 mb-1">Send SOL, USDC, or USDT to this address:</p>
+            <div class="bg-white/20 rounded-xl p-3 mb-3">
+                <p class="text-sm font-mono break-all" id="depositAddress">Loading...</p>
+            </div>
+            <button onclick="copyAddress()" class="w-full bg-white/20 py-2 rounded-xl text-sm font-medium hover:bg-white/30 transition">
+                Copy Address
+            </button>
+        </div>
+        
+        <!-- Balance Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- SOL Card -->
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg">SOL</span>
+                    <span class="text-2xl">◎</span>
+                </div>
+                <p class="text-2xl font-bold" id="solBalance">0</p>
+            </div>
+            
+            <!-- USDC Card -->
+            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 text-white shadow-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg">USDC</span>
+                    <span class="text-2xl">$</span>
+                </div>
+                <p class="text-2xl font-bold" id="usdcBalance">0</p>
+            </div>
+            
+            <!-- USDT Card -->
+            <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-lg">USDT</span>
+                    <span class="text-2xl">₮</span>
+                </div>
+                <p class="text-2xl font-bold" id="usdtBalance">0</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        const socket = io();
+        socket.emit('authenticate', token);
+
+        socket.on('deposit', (data) => {
+            alert(`💰 Received ${data.amount} ${data.token}`);
+            loadDashboard();
+        });
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/auth/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!res.ok) {
+                    throw new Error('Failed to load profile');
+                }
+                
+                const data = await res.json();
+                console.log('Dashboard data:', data);
+                
+                // Update balances
+                document.getElementById('solBalance').textContent = data.balances?.sol_balance?.toFixed(4) || '0';
+                document.getElementById('usdcBalance').textContent = data.balances?.usdc_balance?.toFixed(2) || '0';
+                document.getElementById('usdtBalance').textContent = data.balances?.usdt_balance?.toFixed(2) || '0';
+                
+                // Update deposit address
+                let depositAddress = 'N/A';
+                
+                if (data.wallets) {
+                    if (data.wallets.sol) depositAddress = data.wallets.sol;
+                    else if (data.wallets.sol_address) depositAddress = data.wallets.sol_address;
+                    else if (data.wallets.solana_address) depositAddress = data.wallets.solana_address;
+                } else if (data.depositAddress) {
+                    depositAddress = data.depositAddress;
+                } else if (data.address) {
+                    depositAddress = data.address;
+                }
+                
+                document.getElementById('depositAddress').textContent = depositAddress;
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                if (error.message.includes('401')) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login';
+                }
+            }
+        }
+
+        function copyAddress() {
+            const address = document.getElementById('depositAddress').textContent;
+            if (address && address !== 'N/A' && address !== 'Loading...') {
+                navigator.clipboard.writeText(address);
+                alert('Address copied to clipboard!');
+            } else {
+                alert('Address not available');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/';
+        }
+
+        // Dropdown functionality
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.toggle('hidden');
+            arrow.textContent = menu.classList.contains('hidden') ? '▼' : '▲';
+        }
+
+        function closeDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.add('hidden');
+            arrow.textContent = '▼';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('dropdownContainer');
+            const menu = document.getElementById('dropdownMenu');
+            const button = document.getElementById('menuButton');
+            
+            if (!container.contains(event.target)) {
+                menu.classList.add('hidden');
+                document.getElementById('dropdownArrow').textContent = '▼';
+            }
+        });
+
+        // Load dashboard on page load
+        loadDashboard();
+        
+        // Refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+</html>

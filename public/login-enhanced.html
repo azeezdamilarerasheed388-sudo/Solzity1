@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+        <!-- Security Badge -->
+        <div class="flex justify-center mb-6">
+            <span class="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+                🔒 Secure Login
+            </span>
+        </div>
+        
+        <h1 class="text-3xl font-bold text-center text-blue-600 mb-2">Welcome Back</h1>
+        <p class="text-gray-600 text-center mb-8">Please enter your credentials</p>
+        
+        <form id="loginForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" id="email" required 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" id="password" required 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+            
+            <!-- Forgot Password Link - ADDED HERE -->
+            <div class="text-right">
+                <a href="/forgot-password" class="text-sm text-blue-600 hover:underline">
+                    Forgot Password?
+                </a>
+            </div>
+            
+            <button type="submit" id="submitBtn" 
+                    class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">
+                Secure Login
+            </button>
+        </form>
+        
+        <p class="mt-6 text-center text-gray-600">
+            Don't have an account? 
+            <a href="/register-enhanced" class="text-blue-600 font-semibold hover:underline">Create Account</a>
+        </p>
+        
+        <!-- Security Tips -->
+        <div class="mt-6 p-4 bg-gray-50 rounded-xl text-xs text-gray-500">
+            <p class="flex items-center mb-1">
+                <span class="text-green-500 mr-2">✓</span> Rate limited to 5 attempts
+            </p>
+            <p class="flex items-center mb-1">
+                <span class="text-green-500 mr-2">✓</span> Login alerts via email
+            </p>
+            <p class="flex items-center">
+                <span class="text-green-500 mr-2">✓</span> All connections are encrypted
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const submitBtn = document.getElementById('submitBtn');
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            
+            try {
+                const res = await fetch('/api/enhanced-auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    window.location.href = '/dashboard';
+                } else {
+                    alert('Error: ' + data.error);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Secure Login';
+                }
+            } catch (error) {
+                alert('Login failed');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Secure Login';
+            }
+        });
+    </script>
+</body>
+</html>

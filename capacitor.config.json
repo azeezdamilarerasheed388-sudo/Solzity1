@@ -1,0 +1,41 @@
+{
+  "appId": "com.solzity.app",
+  "appName": "Solzity",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://effective-space-barnacle-qrr69qpxv4jhqgg-3000.app.github.dev",
+    "cleartext": true,
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "allowNavigation": [
+      "*.app.github.dev",
+      "*.github.dev"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#2563eb",
+    "buildOptions": {
+      "keystorePath": "",
+      "keystoreAlias": ""
+    }
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#2563eb",
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#2563eb",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "iosSpinnerStyle": "small",
+      "spinnerColor": "#ffffff"
+    }
+  }
+}

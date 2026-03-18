@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Solzity - Trade Crypto with 100x Leverage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* Keep ALL original classes exactly as they were */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f3f4f6;
+            min-height: 100vh;
+            padding: 8px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Original asset tabs */
+        .asset-tab {
+            padding: 12px 16px;
+            background: #f3f4f6;
+            border: none;
+            color: #4b5563;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            flex: 1;
+            min-width: 70px;
+            font-size: 14px;
+        }
+
+        .asset-tab.active {
+            background: #F0B90B;
+            color: black;
+        }
+
+        /* Original timeframe buttons */
+        .timeframe-btn {
+            padding: 8px 12px;
+            background: #f3f4f6;
+            border: none;
+            color: #4b5563;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .timeframe-btn.active {
+            background: #F0B90B;
+            color: black;
+        }
+
+        /* Original sell button */
+        .sell-btn {
+            flex: 1;
+            padding: 16px;
+            background: #EA3943;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-right: 8px;
+            transition: all 0.2s;
+        }
+
+        .sell-btn:hover {
+            background: #c41e28;
+            transform: translateY(-2px);
+        }
+
+        /* Original buy button */
+        .buy-btn {
+            flex: 1;
+            padding: 16px;
+            background: #16C784;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.2s;
+        }
+
+        .buy-btn:hover {
+            background: #0f9d5e;
+            transform: translateY(-2px);
+        }
+
+        /* Original volume buttons */
+        .volume-btn {
+            padding: 12px 5px;
+            background: #f3f4f6;
+            border: none;
+            color: #4b5563;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .volume-btn.active {
+            background: #F0B90B;
+            color: black;
+        }
+
+        /* Original transfer buttons */
+        .transfer-btn {
+            flex: 1;
+            padding: 14px;
+            background: #F0B90B;
+            color: black;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        .transfer-btn.secondary {
+            background: #9ca3af;
+            color: white;
+        }
+
+        /* Original SL/TP badge */
+        .sltp-badge {
+            background: #e5e7eb;
+            color: #4b5563;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .sltp-badge.active {
+            background: #F0B90B;
+            color: black;
+        }
+
+        /* Original SL/TP buttons */
+        .sltp-buy {
+            background: #16C784;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .sltp-sell {
+            background: #EA3943;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        /* Original close button */
+        .close-btn {
+            width: 100%;
+            padding: 12px;
+            background: #F0B90B;
+            color: black;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            margin-top: 8px;
+        }
+
+        /* Original token options */
+        .token-option {
+            flex: 1;
+            padding: 14px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            color: #4b5563;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .token-option.selected {
+            border-color: #F0B90B;
+            background: #F0B90B;
+            color: black;
+        }
+
+        /* Original modal buttons */
+        .confirm {
+            background: #F0B90B;
+            color: black;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .cancel {
+            background: #e5e7eb;
+            color: #4b5563;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        /* Position Card Styles - FROM ORIGINAL */
+        .position-card {
+            background: #2A2C33;
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 5px solid;
+            color: white;
+        }
+
+        .position-card.profit {
+            border-left-color: #16C784;
+        }
+
+        .position-card.loss {
+            border-left-color: #EA3943;
+        }
+
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .position-asset {
+            font-weight: bold;
+            color: white;
+            font-size: 16px;
+        }
+
+        .position-side {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .position-side.BUY {
+            background: #16C784;
+            color: white;
+        }
+
+        .position-side.SELL {
+            background: #EA3943;
+            color: white;
+        }
+
+        .position-details {
+            color: #8E8E93;
+            font-size: 14px;
+        }
+
+        .position-details div {
+            margin-bottom: 6px;
+        }
+
+        .position-pnl {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 12px 0;
+        }
+
+        .position-pnl.profit {
+            color: #16C784;
+        }
+
+        .position-pnl.loss {
+            color: #EA3943;
+        }
+
+        /* Notification Styles - FROM ORIGINAL */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            left: 20px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1001;
+            animation: slideIn 0.3s;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .notification.success {
+            background: #16C784;
+        }
+
+        .notification.error {
+            background: #EA3943;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* New header styles */
+        .new-header {
+            background: white;
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 12px;
+            background: #f3f4f6;
+            border-radius: 40px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #2563eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        #userName {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* Layout classes */
+        .trading-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .chart-section {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .trading-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            color: white;
+        }
+
+        .positions-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-top: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        /* Dropdown styles */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            left: 0;
+            margin-top: 10px;
+            width: 240px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            padding: 8px 0;
+            border: 1px solid #e5e7eb;
+            z-index: 50;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .dropdown-item:hover {
+            background: #f9fafb;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 8px 0;
+        }
+
+        /* MOBILE FRIENDLY - Everything BIG and properly sized */
+        @media (max-width: 1024px) {
+            .trading-grid {
+                grid-template-columns: 1fr 320px;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .trading-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            body {
+                padding: 10px;
+            }
+            
+            .asset-tabs {
+                display: flex;
+                overflow-x: auto;
+                gap: 8px;
+                padding-bottom: 8px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            
+            .asset-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .asset-tab {
+                min-width: 80px;
+                font-size: 15px;
+                padding: 12px 16px;
+            }
+            
+            .timeframe-selector {
+                display: flex;
+                overflow-x: auto;
+                gap: 8px;
+                padding-bottom: 8px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            
+            .timeframe-selector::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .timeframe-btn {
+                font-size: 14px;
+                padding: 10px 16px;
+            }
+            
+            .volume-buttons {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 8px;
+            }
+            
+            .volume-btn {
+                padding: 14px 5px;
+                font-size: 15px;
+            }
+            
+            #positionsList {
+                grid-template-columns: 1fr !important;
+                gap: 16px;
+            }
+            
+            .price-row {
+                padding: 16px !important;
+                margin: 16px 0 !important;
+            }
+            
+            .sell-btn, .buy-btn {
+                font-size: 20px;
+                padding: 16px;
+            }
+            
+            .spread {
+                font-size: 16px !important;
+                margin: 0 8px !important;
+            }
+            
+            .balance-card {
+                padding: 18px;
+            }
+            
+            .balance-card > div:first-child {
+                font-size: 16px;
+            }
+            
+            #tradingBalance {
+                font-size: 22px;
+            }
+            
+            .balance-card > div:nth-child(2) > div {
+                padding: 10px;
+            }
+            
+            .balance-card > div:nth-child(2) > div > div:first-child {
+                font-size: 12px;
+            }
+            
+            .balance-card > div:nth-child(2) > div > div:last-child {
+                font-size: 16px;
+            }
+            
+            .transfer-btn {
+                padding: 14px;
+                font-size: 16px;
+            }
+            
+            .sltp-section {
+                padding: 16px !important;
+                margin: 16px 0 !important;
+            }
+            
+            .sltp-title {
+                font-size: 16px;
+            }
+            
+            .sltp-badge {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+            
+            .sltp-input input {
+                padding: 10px;
+                font-size: 15px;
+            }
+            
+            .order-summary {
+                padding: 16px !important;
+            }
+            
+            .order-summary div {
+                font-size: 15px;
+            }
+            
+            .position-card {
+                padding: 18px;
+            }
+            
+            .position-asset {
+                font-size: 17px;
+            }
+            
+            .position-side {
+                padding: 6px 16px;
+                font-size: 14px;
+            }
+            
+            .position-details {
+                font-size: 15px;
+            }
+            
+            .position-pnl {
+                font-size: 22px;
+            }
+            
+            .close-btn {
+                padding: 14px;
+                font-size: 16px;
+            }
+            
+            .positions-section h2 {
+                font-size: 20px !important;
+                margin-bottom: 16px !important;
+            }
+            
+            .trading-panel h2 {
+                font-size: 20px !important;
+                margin-bottom: 16px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo span:last-child {
+                display: none;
+            }
+            
+            .logo span:first-child {
+                font-size: 28px;
+            }
+            
+            #userName {
+                display: none;
+            }
+            
+            .user-menu {
+                padding: 4px 8px;
+            }
+            
+            .user-avatar {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+            
+            .volume-buttons {
+                grid-template-columns: repeat(4, 1fr) !important;
+            }
+            
+            .sell-btn, .buy-btn {
+                font-size: 18px;
+                padding: 14px;
+            }
+            
+            .sell-btn span, .buy-btn span {
+                font-size: 16px;
+            }
+            
+            .price-row {
+                padding: 12px !important;
+            }
+            
+            .dropdown-menu {
+                width: 220px;
+            }
+            
+            .dropdown-item {
+                padding: 14px 16px;
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Dropdown -->
+        <div class="new-header">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="/" class="logo">
+                    <span>◎</span>
+                    <span>Solzity</span>
+                </a>
+                
+                <!-- Dropdown Menu -->
+                <div style="position: relative;" id="dropdownContainer">
+                    <button onclick="toggleDropdown()" style="display: flex; align-items: center; gap: 8px; background: #f3f4f6; padding: 10px 16px; border: none; border-radius: 40px; cursor: pointer; font-size: 15px; font-weight: 500;">
+                        <span>☰</span>
+                        <span>Menu</span>
+                        <span id="dropdownArrow">▼</span>
+                    </button>
+                    
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="/dashboard" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #eab308; font-size: 18px;">📊</span>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/competitions" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #f97316; font-size: 18px;">🏆</span>
+                            <span>Competitions</span>
+                        </a>
+                        <a href="/ngn" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #22c55e; font-size: 18px;">🇳🇬</span>
+                            <span>NGN Wallet</span>
+                        </a>
+                        <a href="/trading-v2/history" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #22c55e; font-size: 18px;">💸</span>
+                            <span>Order History</span>
+                        </a>
+                        <a href="/withdraw" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #ef4444; font-size: 18px;">🏧</span>
+                            <span>Withdraw</span>
+                        </a>
+                        <a href="/deposits" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #a855f7; font-size: 18px;">📜</span>
+                            <span>History</span>
+                        </a>
+                        <a href="/trading-v2/dashboard" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #3b82f6; font-size: 18px;">📈</span>
+                            <span>Stats</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/2fa-setup" class="dropdown-item" onclick="closeDropdown()">
+                            <span style="color: #6b7280; font-size: 18px;">🔐</span>
+                            <span>2FA Setup</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="user-menu" id="userMenu">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span id="userName">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Trading Grid -->
+        <div class="trading-grid">
+            <div class="chart-section">
+                <div class="asset-tabs" id="assetTabs">
+                    <button class="asset-tab" onclick="switchAsset('BTC/USDT')">BTC</button>
+                    <button class="asset-tab" onclick="switchAsset('ETH/USDT')">ETH</button>
+                    <button class="asset-tab" onclick="switchAsset('ETC/USDT')">ETC</button>
+                    <button class="asset-tab active" onclick="switchAsset('SOL/USDT')">SOL</button>
+                </div>
+                <div class="timeframe-selector">
+                    <button class="timeframe-btn active" onclick="changeTimeframe('1')">1m</button>
+                    <button class="timeframe-btn" onclick="changeTimeframe('5')">5m</button>
+                    <button class="timeframe-btn" onclick="changeTimeframe('15')">15m</button>
+                    <button class="timeframe-btn" onclick="changeTimeframe('30')">30m</button>
+                    <button class="timeframe-btn" onclick="changeTimeframe('60')">1h</button>
+                    <button class="timeframe-btn" onclick="changeTimeframe('240')">4h</button>
+                    <button class="timeframe-btn" onclick="changeTimeframe('1D')">1d</button>
+                </div>
+                <div id="tradingview_chart"></div>
+            </div>
+
+            <div class="trading-panel">
+                <h2 style="margin-bottom: 16px; font-weight: bold; font-size: 20px;">Trade</h2>
+                
+                <!-- Balance Card -->
+                <div class="balance-card">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="opacity: 0.9; font-size: 16px;">Trading Balance:</span>
+                        <span style="font-weight: bold; font-size: 22px;" id="tradingBalance">$0.00</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 12px;">
+                        <div style="flex: 1; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 12px; opacity: 0.9;">USDC</div>
+                            <div style="font-weight: bold; font-size: 16px;" id="mainUSDC">$0.00</div>
+                        </div>
+                        <div style="flex: 1; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 12px; opacity: 0.9;">USDT</div>
+                            <div style="font-weight: bold; font-size: 16px;" id="mainUSDT">$0.00</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 12px;">
+                        <button class="transfer-btn" onclick="showTransferModal('to-trading')">↓ To Trading</button>
+                        <button class="transfer-btn secondary" onclick="showTransferModal('to-main')">↑ To Main</button>
+                    </div>
+                </div>
+
+                <!-- Price Row -->
+                <div class="price-row" style="display: flex; align-items: center; background: #f9fafb; padding: 16px; border-radius: 12px; margin: 20px 0;">
+                    <button class="sell-btn" id="sellBtn" onclick="placeOrder('SELL')">Sell <span id="sellPrice" style="font-size: 18px;">$0.00</span></button>
+                    <span class="spread" style="color: #F0B90B; font-weight: bold; margin: 0 12px; font-size: 18px;" id="spread">0.00</span>
+                    <button class="buy-btn" id="buyBtn" onclick="placeOrder('BUY')">Buy <span id="buyPrice" style="font-size: 18px;">$0.00</span></button>
+                </div>
+
+                <!-- SL/TP Section -->
+                <div class="sltp-section" style="background: #f9fafb; border-radius: 12px; padding: 16px; margin: 16px 0;">
+                    <div class="sltp-title" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="font-weight: bold; font-size: 16px;">Stop Loss & Take Profit</span>
+                        <span class="sltp-badge" id="sltpMode" onclick="toggleSLTP()">Click to enable</span>
+                    </div>
+                    <div id="sltpInputs" style="display: none;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                            <div style="flex: 1;">
+                                <label style="display: block; color: #6b7280; font-size: 13px; margin-bottom: 4px;">Stop Loss <span style="color: #EA3943;">▼</span></label>
+                                <input type="number" id="stopLoss" placeholder="0.00" step="0.01" style="width: 100%; padding: 12px; background: white; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 15px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; color: #6b7280; font-size: 13px; margin-bottom: 4px;">Take Profit <span style="color: #16C784;">▲</span></label>
+                                <input type="number" id="takeProfit" placeholder="0.00" step="0.01" style="width: 100%; padding: 12px; background: white; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 15px;">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="sltp-buy" onclick="placeOrderWithSLTP('BUY')" style="font-size: 15px;">Buy with SL/TP</button>
+                            <button class="sltp-sell" onclick="placeOrderWithSLTP('SELL')" style="font-size: 15px;">Sell with SL/TP</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volume Section -->
+                <div class="volume-section" style="margin-bottom: 16px;">
+                    <div class="volume-label" style="color: #6b7280; margin-bottom: 10px; font-size: 15px; font-weight: 500;">Volume</div>
+                    <div class="volume-buttons" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
+                        <button class="volume-btn active" onclick="setVolume(0.01)">0.01</button>
+                        <button class="volume-btn" onclick="setVolume(0.05)">0.05</button>
+                        <button class="volume-btn" onclick="setVolume(0.1)">0.1</button>
+                        <button class="volume-btn" onclick="setVolume(0.5)">0.5</button>
+                        <button class="volume-btn" onclick="setVolume(1)">1</button>
+                        <button class="volume-btn" onclick="setVolume(2)">2</button>
+                        <button class="volume-btn" onclick="setVolume(5)">5</button>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary" style="background: #f9fafb; padding: 16px; border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #6b7280; font-size: 15px;">Margin (1:100)</span>
+                        <span style="font-weight: bold; font-size: 16px;" id="margin">$0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #6b7280; font-size: 15px;">Fee ($15/vol)</span>
+                        <span style="font-weight: bold; font-size: 16px;" id="fee">$0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                        <span style="font-weight: bold; font-size: 16px;">Total Required</span>
+                        <span style="font-weight: bold; color: #2563eb; font-size: 18px;" id="total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Positions Section - WITH ORIGINAL STYLING -->
+        <div class="positions-section">
+            <h2 style="margin-bottom: 16px; font-weight: bold; font-size: 20px;">Your Open Positions</h2>
+            <div id="positionsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                <!-- Sample position card to show styling - This will be replaced by trading.js -->
+                <div class="position-card profit">
+                    <div class="position-header">
+                        <span class="position-asset">SOL/USDT</span>
+                        <span class="position-side BUY">BUY</span>
+                    </div>
+                    <div class="position-details">
+                        <div>Volume: 0.01</div>
+                        <div>Entry: $88.37</div>
+                        <div>Current: $88.34</div>
+                    </div>
+                    <div class="position-pnl profit">-0.03 USDT</div>
+                    <button class="close-btn" onclick="closePosition('123')">Close</button>
+                </div>
+                
+                <div class="position-card loss">
+                    <div class="position-header">
+                        <span class="position-asset">BTC/USDT</span>
+                        <span class="position-side SELL">SELL</span>
+                    </div>
+                    <div class="position-details">
+                        <div>Volume: 0.05</div>
+                        <div>Entry: $43,500</div>
+                        <div>Current: $43,800</div>
+                    </div>
+                    <div class="position-pnl loss">-15.00 USDT</div>
+                    <button class="close-btn" onclick="closePosition('456')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer Modal -->
+    <div class="modal" id="transferModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 16px; font-weight: bold; font-size: 20px;" id="modalTitle">Transfer to Trading</h3>
+            <p style="color: #6b7280; margin-bottom: 16px; font-size: 15px;">Select token to transfer</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <div class="token-option selected" id="tokenUSDC" onclick="selectTransferToken('USDC')">USDC</div>
+                <div class="token-option" id="tokenUSDT" onclick="selectTransferToken('USDT')">USDT</div>
+            </div>
+            <input type="number" id="transferAmount" placeholder="Enter amount" step="0.01" min="1" style="width: 100%; padding: 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; margin: 12px 0; font-size: 16px;">
+            <p style="margin-bottom: 16px; font-size: 15px;">Available: <span id="modalAvailable">$0.00</span> <span id="modalToken">USDC</span></p>
+            <div style="display: flex; gap: 10px;">
+                <button class="confirm" onclick="confirmTransfer()">Confirm</button>
+                <button class="cancel" onclick="closeTransferModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container - FOR ORIGINAL MESSAGES -->
+    <div id="notification" style="display: none;"></div>
+
+    <script>
+        // Dropdown functionality
+        function toggleDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.toggle('show');
+            arrow.textContent = menu.classList.contains('show') ? '▲' : '▼';
+        }
+
+        function closeDropdown() {
+            const menu = document.getElementById('dropdownMenu');
+            const arrow = document.getElementById('dropdownArrow');
+            menu.classList.remove('show');
+            arrow.textContent = '▼';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const container = document.getElementById('dropdownContainer');
+            const menu = document.getElementById('dropdownMenu');
+            
+            if (container && !container.contains(event.target)) {
+                menu.classList.remove('show');
+                document.getElementById('dropdownArrow').textContent = '▼';
+            }
+        });
+
+        // User data
+        async function loadUserData() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const res = await fetch('/api/auth/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.username || 'User';
+                    document.getElementById('userAvatar').textContent = (data.user.username || 'U')[0].toUpperCase();
+                }
+            } catch (error) {
+                console.error('Error loading user:', error);
+            }
+        }
+
+        loadUserData();
+
+        // Notification function - FROM ORIGINAL
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.style.display = 'block';
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Modal functions
+        window.showTransferModal = function(type) {
+            document.getElementById('transferModal').classList.add('active');
+            document.getElementById('modalTitle').textContent = type === 'to-trading' ? 'Transfer to Trading' : 'Transfer to Main';
+        };
+
+        window.closeTransferModal = function() {
+            document.getElementById('transferModal').classList.remove('active');
+        };
+
+        window.selectTransferToken = function(token) {
+            document.getElementById('tokenUSDC').classList.remove('selected');
+            document.getElementById('tokenUSDT').classList.remove('selected');
+            document.getElementById(`token${token}`).classList.add('selected');
+            document.getElementById('modalToken').textContent = token;
+        };
+
+        window.confirmTransfer = function() {
+            showNotification('Transfer confirmed!', 'success');
+            closeTransferModal();
+        };
+
+        window.toggleSLTP = function() {
+            const inputs = document.getElementById('sltpInputs');
+            const badge = document.getElementById('sltpMode');
+            
+            if (inputs.style.display === 'none') {
+                inputs.style.display = 'block';
+                badge.textContent = 'Click to disable';
+                badge.classList.add('active');
+            } else {
+                inputs.style.display = 'none';
+                badge.textContent = 'Click to enable';
+                badge.classList.remove('active');
+            }
+        };
+
+        // Sample trading functions with notifications
+        window.placeOrder = function(type) {
+            showNotification(`${type} order placed successfully!`, 'success');
+        };
+
+        window.placeOrderWithSLTP = function(type) {
+            showNotification(`${type} order with SL/TP placed successfully!`, 'success');
+        };
+
+        window.setVolume = function(vol) {
+            document.querySelectorAll('.volume-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        };
+
+        window.closePosition = function(id) {
+            showNotification(`Position ${id} closed successfully!`, 'success');
+        };
+
+        window.switchAsset = function(asset) {
+            showNotification(`Switched to ${asset}`, 'success');
+        };
+
+        window.changeTimeframe = function(tf) {
+            showNotification(`Timeframe changed to ${tf}m`, 'success');
+        };
+    </script>
+
+    <!-- Original scripts - These will override the mock functions -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script src="/js/trading-v2/trading.js"></script>
+</body>
+</html>

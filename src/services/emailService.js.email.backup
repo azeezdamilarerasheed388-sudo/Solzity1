@@ -1,0 +1,270 @@
+const nodemailer = require('nodemailer');
+
+class EmailService {
+    constructor() {
+        this.transporter = nodemailer.createTransport({
+            host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+            port: process.env.EMAIL_PORT || 587,
+            secure: false,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+    }
+
+    // 1. Verification Email
+    async sendVerificationEmail(email, username, code) {
+        const mailOptions = {
+            from: '"Solzity" <verify@cexplatform.com>',
+            to: email,
+            subject: '✅ Verify Your Email - Solzity',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #2563eb; font-size: 32px;">Solzity</h1>
+                    </div>
+                    
+                    <h2 style="color: #2563eb;">Welcome ${username}! 🎉</h2>
+                    <p>Please verify your email address to start trading.</p>
+                    
+                    <div style="background: #f3f4f6; padding: 30px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                        <p style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">Your verification code is:</p>
+                        <div style="font-size: 42px; letter-spacing: 8px; font-weight: bold; color: #2563eb; font-family: monospace;">
+                            ${code}
+                        </div>
+                        <p style="font-size: 12px; color: #9ca3af; margin-top: 10px;">This code expires in 10 minutes</p>
+                    </div>
+                    
+                    <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 12px;">Need help? Contact support@cexplatform.com</p>
+                </div>
+            `
+        };
+        
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 2. Welcome Email
+    async sendWelcomeEmail(email, name) {
+        const mailOptions = {
+            from: '"Solzity" <welcome@cexplatform.com>',
+            to: email,
+            subject: '🎉 Welcome to Solzity!',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #2563eb; font-size: 32px;">Solzity</h1>
+                    </div>
+                    <h2 style="color: #2563eb;">Welcome ${name}! 🎉</h2>
+                    <p>Your account has been successfully created and verified.</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0;">✨ What you can do now:</h3>
+                        <ul style="list-style-type: none; padding: 0;">
+                            <li style="margin: 10px 0;">💰 Deposit SOL, USDC, USDT</li>
+                            <li style="margin: 10px 0;">📊 Trade with 100x leverage</li>
+                            <li style="margin: 10px 0;">🔄 Transfer funds to other users</li>
+                            <li style="margin: 10px 0;">🔐 Enable 2FA for extra security</li>
+                        </ul>
+                    </div>
+
+                    <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 12px;">Need help? Contact support@cexplatform.com</p>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 3. Login Alert
+    async sendLoginAlert(email, name, ip, device, location) {
+        const mailOptions = {
+            from: '"Solzity" <security@cexplatform.com>',
+            to: email,
+            subject: '🔐 New Login Detected on Your Account',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h1 style="color: #2563eb; font-size: 32px;">Solzity</h1>
+                    </div>
+                    
+                    <h2 style="color: #2563eb;">Security Alert</h2>
+                    <p>Hello ${name},</p>
+                    <p>A new login was detected on your account:</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+                        <p><strong>IP Address:</strong> ${ip}</p>
+                        <p><strong>Location:</strong> ${location || 'Unknown'}</p>
+                        <p><strong>Device:</strong> ${device || 'Unknown device'}</p>
+                    </div>
+                    
+                    <div style="background: #e6f7ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0;">✅ If this was you, you can ignore this email.</p>
+                    </div>
+
+                    <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 12px;">This is an automated security message.</p>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 4. Deposit Confirmation
+    async sendDepositConfirmation(email, name, amount, token, txHash) {
+        const explorerLink = token === 'SOL' 
+            ? `https://solscan.io/tx/${txHash}?cluster=devnet`
+            : `https://solscan.io/tx/${txHash}?cluster=devnet`;
+        
+        const mailOptions = {
+            from: '"Solzity" <transactions@cexplatform.com>',
+            to: email,
+            subject: `💰 Deposit Confirmed: ${amount} ${token}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2563eb;">Deposit Confirmed! ✅</h2>
+                    <p>Hello ${name},</p>
+                    <p>Your deposit has been confirmed:</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <p style="font-size: 24px; text-align: center;"><strong>${amount} ${token}</strong></p>
+                    </div>
+                    
+                    <p><a href="${explorerLink}" target="_blank">View on Solscan 🔍</a></p>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 5. Withdrawal Request
+    async sendWithdrawalRequest(email, name, amount, token, address) {
+        const mailOptions = {
+            from: '"Solzity" <transactions@cexplatform.com>',
+            to: email,
+            subject: `📤 Withdrawal Request: ${amount} ${token}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2563eb;">Withdrawal Request Received</h2>
+                    <p>Hello ${name},</p>
+                    <p>Your withdrawal request is being processed:</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
+                        <p><strong>Amount:</strong> ${amount} ${token}</p>
+                        <p><strong>Status:</strong> Pending Approval</p>
+                    </div>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 6. Withdrawal Approved
+    async sendWithdrawalApproved(email, name, amount, token, txHash) {
+        const explorerLink = `https://solscan.io/tx/${txHash}?cluster=devnet`;
+        
+        const mailOptions = {
+            from: '"Solzity" <transactions@cexplatform.com>',
+            to: email,
+            subject: `✅ Withdrawal Approved: ${amount} ${token}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2563eb;">Withdrawal Approved! ✅</h2>
+                    <p>Hello ${name},</p>
+                    <p>Your withdrawal has been sent:</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
+                        <p><strong>Amount:</strong> ${amount} ${token}</p>
+                        <p><a href="${explorerLink}" target="_blank">View Transaction</a></p>
+                    </div>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 7. Withdrawal Declined
+    async sendWithdrawalDeclined(email, name, amount, token, reason) {
+        const mailOptions = {
+            from: '"Solzity" <transactions@cexplatform.com>',
+            to: email,
+            subject: `❌ Withdrawal Declined: ${amount} ${token}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #dc2626;">Withdrawal Declined</h2>
+                    <p>Hello ${name},</p>
+                    <p>Your withdrawal request has been declined:</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
+                        <p><strong>Amount:</strong> ${amount} ${token}</p>
+                        <p><strong>Reason:</strong> ${reason}</p>
+                    </div>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 8. 2FA Enabled
+    async send2FAEnabled(email, name, device) {
+        const mailOptions = {
+            from: '"Solzity" <security@cexplatform.com>',
+            to: email,
+            subject: '🔐 Two-Factor Authentication Enabled',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2563eb;">2FA Enabled Successfully</h2>
+                    <p>Hello ${name},</p>
+                    <p>Two-factor authentication has been enabled on your account.</p>
+                    <p>Your account is now more secure!</p>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 9. 2FA Disabled
+    async send2FADisabled(email, name, device) {
+        const mailOptions = {
+            from: '"Solzity" <security@cexplatform.com>',
+            to: email,
+            subject: '⚠️ Two-Factor Authentication Disabled',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #f59e0b;">2FA Disabled</h2>
+                    <p>Hello ${name},</p>
+                    <p>Two-factor authentication has been disabled on your account.</p>
+                    <p>If you didn't do this, please secure your account immediately.</p>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+
+    // 10. Security Alert
+    async sendSecurityAlert(email, name, activity, ip, location) {
+        const mailOptions = {
+            from: '"Solzity" <security@cexplatform.com>',
+            to: email,
+            subject: '🚨 Suspicious Activity Detected',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #dc2626;">Security Alert</h2>
+                    <p>Hello ${name},</p>
+                    <p>We detected suspicious activity on your account:</p>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
+                        <p><strong>Activity:</strong> ${activity}</p>
+                        <p><strong>IP Address:</strong> ${ip}</p>
+                        <p><strong>Location:</strong> ${location || 'Unknown'}</p>
+                    </div>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
+}
+
+module.exports = new EmailService();
